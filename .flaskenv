@@ -1,0 +1,2 @@
+FLASK_APP=chainmore
+FLASK_ENV=development
