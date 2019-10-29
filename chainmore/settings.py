@@ -35,8 +35,7 @@ class BaseConfig:
     ALBUMY_SEARCH_RESULT_PER_PAGE = 20
     ALBUMY_MAIL_SUBJECT_PREFIX = '[Albumy]'
     ALBUMY_UPLOAD_PATH = os.path.join(basedir, 'uploads')
-    ALBUMY_PHOTO_SIZE = {'small': 400,
-                         'medium': 800}
+    ALBUMY_PHOTO_SIZE = {'small': 400, 'medium': 800}
     ALBUMY_PHOTO_SUFFIX = {
         ALBUMY_PHOTO_SIZE['small']: '_s',  # thumbnail
         ALBUMY_PHOTO_SIZE['medium']: '_m',  # display
@@ -45,7 +44,8 @@ class BaseConfig:
     WTF_CSRF_CHECK_DEFAULT = False
 
     SECRET_KEY = os.getenv('SECRET_KEY', 'secret string')
-    MAX_CONTENT_LENGTH = 3 * 1024 * 1024  # file size exceed to 3 Mb will return a 413 error response.
+    # file size exceed to 3 Mb will return a 413 error response.
+    MAX_CONTENT_LENGTH = 3 * 1024 * 1024
 
     BOOTSTRAP_SERVE_LOCAL = True
 
@@ -82,8 +82,8 @@ class TestingConfig(BaseConfig):
 
 
 class ProductionConfig(BaseConfig):
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL',
-                                        prefix + os.path.join(basedir, 'data.db'))
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL', prefix + os.path.join(basedir, 'data.db'))
 
 
 config = {
