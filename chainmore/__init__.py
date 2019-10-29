@@ -17,6 +17,7 @@ from .blueprints.user import user_bp
 from .blueprints.main import main_bp
 from .extensions import db, jwt, whooshee
 from .settings import config
+from .models import (Category)
 
 
 def create_app(config_name=None):
@@ -58,6 +59,64 @@ def register_errorhandlers(app):
 
 def register_commands(app):
     @app.cli.command()
-    def forge():
+    @click.option('--user', default=30)
+    @click.option('--domain', default=10)
+    @click.option('--post', default=20)
+    @click.option('--follow', default=30)
+    @click.option('--comment', default=50)
+    @click.option('--collect', default=20)
+    @click.option('--watch', default=30)
+    @click.option('--like', default=100)
+    @click.option('--vote', default=50)
+    def forge(user,
+              domain,
+              post,
+              follow,
+              comment,
+              collect,
+              watch,
+              like,
+              vote):
         """Generate fake data."""
         click.echo('Initializing fake data...')
+
+        from .fakes import (fake_admin,
+                            fake_user,
+                            fake_comment,
+                            fake_follow,
+                            fake_domain,
+                            fake_post,
+                            fake_watch,
+                            fake_like,
+                            fake_vote,
+                            fake_collect)
+
+        db.drop_all()
+        db.create_all()
+
+
+        click.echo('Initializing the catagories...')
+        Category.init_category()
+        click.echo('Generating the administrator...')
+        fake_admin()
+        click.echo('Generating %d users...' % user)
+        fake_user(user)
+        click.echo('Generating %d follows...' % follow)
+        fake_follow(follow)
+        click.echo('Generating %d domain...' % domain)
+        fake_domain(domain)
+        click.echo('Generating %d posts...' % post)
+        fake_post(post)
+        click.echo('Generating %d comments...' % comment)
+        fake_comment(comment)
+        click.echo('Generating %d watches...' % watch)
+        fake_watch(watch)
+        click.echo('Generating %d likes...' % like)
+        fake_like(like)
+        click.echo('Generating %d votes...' % vote)
+        fake_vote(vote)
+        click.echo('Generating %d collects...' % collect)
+        fake_collect(collect)
+        click.echo('Done')
+
+

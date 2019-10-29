@@ -7,7 +7,7 @@ import re
 
 from flask import (jsonify, abort)
 
-from .models import User
+from .models import User, Domain
 
 
 def response(status="OK", **kwargs):
@@ -56,6 +56,18 @@ def exist_username(value):
     else:
         return False
 
+
+def exist_nickname(value):
+    if User.query.filter_by(nickname=value).first():
+        return True
+    else:
+        return False
+
+def exist_domain(value):
+    if Domain.query.filter_by(title=value).first():
+        return True
+    else:
+        return False
 
 def validate_email(email, length):
     if len(email) > length:
