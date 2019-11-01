@@ -80,11 +80,12 @@ def fake_follow(count=30):
 def fake_domain(count=30):
     for _ in range(count):
         while True:
-            title = fake.word()
+            title = fake.job()
             if not exist_domain(title): break
         domain = Domain(
             title = title,
             description = fake.text(),
+            bio = "名" + fake.job() + "正在" + fake.word(),
             timestamp = fake.date_time_this_year(),
             creator=User.query.get(random.randint(1, User.query.count()))
         )
@@ -98,7 +99,7 @@ def fake_post(count=30):
             description=fake.text(),
             url="https://juejin.im/post/5db684ddf265da4d495c40e5",
             timestamp = fake.date_time_this_year(),
-            category = Category.query.filter_by(category='article').first(),
+            category = Category.query.get(random.randint(1, Category.query.count())),
             author = User.query.get(random.randint(1, User.query.count())),
             domain = Domain.query.get(random.randint(1, Domain.query.count())),
         )
