@@ -29,6 +29,7 @@ class Domains(Resource):
             return response("EMPTY_BODY", msg="Empty Body")
         title = data.get("title", None)
         description = data.get("description", "")
+        bio = data.get("bio", "人正在关注")
         if title is None:
             return response("BAD_REQUEST", msg="No title provided")
 
@@ -36,6 +37,7 @@ class Domains(Resource):
             title=title,
             description=description,
             author_id=current_user.id,
+            bio=bio,
         )
         db.session.add(domain)
         db.session.commit()

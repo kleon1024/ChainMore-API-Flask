@@ -17,7 +17,7 @@ class Category(db.Model):
 
     @staticmethod
     def init_category():
-        category = Category(category='article')
+        category = Category(category='文章')
         db.session.add(category)
         db.session.commit()
 
@@ -128,18 +128,24 @@ class User(db.Model):
                                 lazy='dynamic',
                                 cascade='all')
 
-    def serialize(self):
-        return {
-            "nickname": self.name,
-            "bio": self.bio,
-            "likeds": len(self.likeds),
-            "watcheds": len(self.watcheds),
-            "followings": len(self.followings),
-            "followers": len(self.followers),
-            "posts": len(self.posts),
-            "domains": len(self.domains),
-            "comments": len(self.comments)
+    def serialize(self, level=0):
+        result = {
+            "nickname": self.nickname,
+            "username": self.username
         }
+
+        if level == 1: return result
+
+        result["bio"] = self.bio
+        result["likeds"] = len(self.likeds)
+        result["watcheds"] = len(self.watcheds)
+        result["followings"] = len(self.followings)
+        result["followers"] = len(self.followers)
+        result["posts"] = len(self.posts)
+        result["domains"] = len(self.domains)
+        result["comments"] = len(self.comments)
+
+        if level == 0: return result
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -206,7 +212,7 @@ class User(db.Model):
             liked_id=post.id).first() is not None
 
     def vote(self, comment):
-        if not self.is_liking(comment):
+        if not self.is_voting(comment):
             vote = Vote(voter=self, voted=comment)
             db.session.add(vote)
             db.session.commit()
@@ -244,6 +250,7 @@ class User(db.Model):
 class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(20), unique=True)
+    bio = db.Column(db.String(30))
     description = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -262,6 +269,7 @@ class Domain(db.Model):
             "title" : self.title,
             "timestamp" : self.timestamp,
             "watchers" : len(self.watchers),
+            "bio" : self.bio,
         }
         if level==1: return result
         
@@ -289,15 +297,19 @@ class Post(db.Model):
     likers = db.relationship('Like', back_populates='liked', cascade='all')
     domain = db.relationship('Domain', back_populates='posts')
 
-    def serialize(self):
+    def serialize(self, level=0):
+
+        description_dict = self.description if level==0 else \
+            self.description[:45].replace('\n', '')
+
         return {
             "id": self.id,
             "title": self.title,
-            "description": self.description,
+            "description": description_dict,
             "url": self.url,
             "timestamp": self.timestamp,
-            "author": User.query.get(self.author_id).nickname,
-            "type": Category.query.get(self.category_id).category,
+            "author": User.query.get(self.author_id).serialize(level=1),
+            "category": Category.query.get(self.category_id).category,
             "domain": self.domain.serialize(level=1),
             "votes": len(self.likers),
             "comments": len(self.comments),
@@ -332,7 +344,9 @@ class Comment(db.Model):
             "body": self.body,
             "timestamp": self.timestamp,
             "replied": self.replied_id,
-            "author": self.author.name,
+            "author": self.author.nickname,
+            "user": self.author.username,
             "post": self.post_id,
-            "votes": len(self.votes)
+            "votes": len(self.voters),
+            "replies" : len(self.replies)
         }

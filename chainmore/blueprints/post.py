@@ -18,7 +18,7 @@ api = Api(post_bp)
 class PostInstance(Resource):
     def get(self, id):
         post = Post.query.get_or_404(id)
-        return response("OK", item=post.serialize())
+        return response("OK", item=post.serialize(level=0))
 
     @jwt_required
     def put(self, id):
@@ -50,6 +50,11 @@ class PostInstance(Resource):
         db.session.commit()
         return response("OK", msg="Post deleted")
 
+class PostTrendings(Resource):
+    def get(self):
+        posts = Post.query.order_by(Post.timestamp.desc()).all()
+        posts = [post.serialize(level=1) for post in posts[0:10]]
+        return response("OK", items=posts)
 
 class Posts(Resource):
     def get(self):
@@ -144,3 +149,4 @@ api.add_resource(PostComment, '/<int:id>/comment')
 api.add_resource(PostLike, '/<int:id>/like')
 api.add_resource(PostCollect, '/<int:id>/collect')
 api.add_resource(Posts, '/')
+api.add_resource(PostTrendings, '/trendings')
