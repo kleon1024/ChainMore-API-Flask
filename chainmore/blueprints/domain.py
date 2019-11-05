@@ -18,7 +18,7 @@ api = Api(domain_bp)
 class DomainInstance(Resource):
     def get(self, id):
         domain = Domain.query.get_or_404(id)
-        return response("OK", domain=domain.serialize())
+        return response("OK", item=domain.serialize())
 
 
 class Domains(Resource):

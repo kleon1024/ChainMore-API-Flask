@@ -270,6 +270,7 @@ class Domain(db.Model):
             "timestamp" : self.timestamp,
             "watchers" : len(self.watchers),
             "bio" : self.bio,
+            "posts" : len(self.posts),
         }
         if level==1: return result
         
