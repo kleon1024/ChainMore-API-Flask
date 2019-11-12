@@ -40,10 +40,11 @@ class SignUp(Resource):
         nickname = data.get("nickname", "")
         email = data.get("email", "")
         payload = data.get("payload", "")
-        username, password = base64.b64decode(payload).split(':')
-        if not validate_email(email, 64) or \
-        not validate_username(username, 20):
-            return response("BAD_REQUEST", msg="Invalid Data")
+        payload = base64.b64decode(payload).decode("utf-8")
+        username, password = payload.split(':')
+        # if not validate_email(email, 64) or \
+        # not validate_username(username, 20):
+        #     return response("BAD_REQUEST", msg="Invalid Data")
         if exist_email(email):
             return response("EMAIL_EXIST", msg="Mail Exist")
         if exist_username(username):
