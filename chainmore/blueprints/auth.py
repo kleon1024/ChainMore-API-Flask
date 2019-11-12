@@ -6,7 +6,9 @@
 import datetime
 
 from flask import Blueprint, request
-from flask_jwt_extended import (create_access_token)
+from flask_jwt_extended import (create_access_token, jwt_required, 
+                                current_user, get_raw_jwt)
+from flask_restful import Api, Resource
 
 import base64
 
@@ -15,8 +17,10 @@ from ..utils import (exist_email, exist_username, validate_email,
                      validate_username, validate_password, response)
 from ..models import User
 
-auth_bp = Blueprint('auth', __name__)
+blacklist = set()
 
+auth_bp = Blueprint('auth', __name__)
+api = Api(auth_bp)
 
 @jwt.user_loader_callback_loader
 def user_loader_callback(identity):
@@ -28,55 +32,67 @@ def custom_user_loader_error(identity):
     return response("INVALID_AUTH", msg="User {} not found".format(identity))
 
 
-@auth_bp.route('/signup', methods=['POST'])
-def signup():
-    data = request.get_json()
-    if data is None:
-        return response("EMPTY_BODY", msg="Empty Body")
-    nickname = data.get("nickname", "")
-    email = data.get("email", "")
-    payload = data.get("payload", "")
-    username, password = base64.b64decode(payload).split(':')
-    if not validate_email(email, 64) or \
-       not validate_username(username, 20) or \
-       not validate_password(password, 64):
-        return response("BAD_REQUEST", msg="Invalid Data")
-    if exist_email(email):
-        return response("EMAIL_EXIST", msg="Mail Exist")
-    if exist_username(username):
-        return response("USERNAME_EXIST", msg="Username Exist")
-    user = User(nickname=nickname, email=email, username=username)
-    user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
-    return response("OK", msg="User Registered")
+class SignUp(Resource):
+    def post(self):
+        data = request.get_json()
+        if data is None:
+            return response("EMPTY_BODY", msg="Empty Body")
+        nickname = data.get("nickname", "")
+        email = data.get("email", "")
+        payload = data.get("payload", "")
+        username, password = base64.b64decode(payload).split(':')
+        if not validate_email(email, 64) or \
+        not validate_username(username, 20):
+            return response("BAD_REQUEST", msg="Invalid Data")
+        if exist_email(email):
+            return response("EMAIL_EXIST", msg="Mail Exist")
+        if exist_username(username):
+            return response("USERNAME_EXIST", msg="Username Exist")
+        user = User(nickname=nickname, email=email, username=username)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return response("OK", msg="User Registered")
 
 
-@auth_bp.route('/signin', methods=['POST'])
-def signin():
-    data = request.get_json()
-    if data is None:
-        return response("EMPTY_BODY", msg="Empty Body")
-    payload = data.get("payload", "")
-    username, password = base64.b64decode(payload).split(':')
+class SignIn(Resource):
+    def post(self):
+        data = request.get_json()
+        if data is None:
+            return response("EMPTY_BODY", msg="Empty Body")
+        payload = data.get("payload", "")
+        payload = base64.b64decode(payload).decode("utf-8")
+        username, password = payload.split(':')
 
-    if validate_email(username, 18):
-        user = User.query.filter_by(email=username.lower()).first()
-        if user is not None and user.validate_password(password):
-            username = user.username
-            expires = datetime.timedelta(hours=1)
-            access_token = create_access_token(identity=username,
-                                               expired=expires)
-            return response("CREATED",
-                            msg="User Login As {}".format(username),
-                            token=access_token)
+        if validate_email(username, 18):
+            user = User.query.filter_by(email=username.lower()).first()
+            if user is not None and user.validate_password(password):
+                username = user.username
+                expires = datetime.timedelta(hours=1)
+                access_token = create_access_token(identity=username,
+                                                expired=expires)
+                return response("OK",
+                                msg="User Login As {}".format(username),
+                                accessToken=access_token)
 
-    if validate_username(username, 20):
-        user = User.query.filter_by(username=username.lower()).first()
-        if user is not None and user.validate_password(password):
-            access_token = create_access_token(identity=username)
-            return response("CREATED",
-                            msg="User Login As {}".format(username),
-                            token=access_token)
+        if validate_username(username, 20):
+            user = User.query.filter_by(username=username.lower()).first()
+            if user is not None and user.validate_password(password):
+                access_token = create_access_token(identity=username)
+                return response("OK",
+                                msg="User Login As {}".format(username),
+                                accessToken=access_token)
 
-    return response("SIGN_IN_FAILED", msg="Invalid Credential")
+        return response("SIGN_IN_FAILED", msg="Invalid Credential")
+
+class SignOut(Resource):
+    @jwt_required
+    def delete(self):
+        jti = get_raw_jwt()['jti']
+        print(jti)
+        blacklist.add(jti)
+        return response("OK", msg="Successfully logged out")
+
+api.add_resource(SignIn, '/signin')
+api.add_resource(SignUp, '/signup')
+api.add_resource(SignOut, '/signout')
