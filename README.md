@@ -66,3 +66,11 @@ User       <--  Watch              --> Domain
 User       <--  Follow             --> User
 
 ```
+
+## Wheels
+- [x] Flask
+- [x] JWT
+- [x] SQLAlchemy
+- [x] Whooshe
+- [x] Blueprint
+- [x] Restful-API
