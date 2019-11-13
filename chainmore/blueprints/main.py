@@ -20,19 +20,29 @@ class Search(Resource):
             return response("OK", items=[])
 
         category = request.args.get('category', '')
-        if category == 'user':
-            users = User.query.whooshee_search(q).all()
-            users = [user.serialize() for user in users]
-            return response("OK", items=users)
-        elif category == 'domains':
+        results = []
+        users = []
+        domains = []
+        posts = []
+        # if category == 'user' or category == 'all':
+        #     users = User.query.whooshee_search(q).all()
+        #     users = [user.serialize() for user in users]
+        #     for user in users:
+        #         user["type"] = "user"
+        if category == 'domain' or category == 'all':
             domains = Domain.query.whooshee_search(q).all()
             domains = [domain.serialize() for domain in domains]
-            return response("OK", items=domains)
-        elif category == 'post':
+            for domain in domains:
+                domain["type"] = "domain"
+        if category == 'post' or category == 'all':
             posts = Post.query.whooshee_search(q).all()
             posts = [post.serialize() for post in posts]
-            return response("OK", items=posts)
-        return response("OK", items=[])
+            for post in posts:
+                post["type"] = "feed"
+        results.extend(users)
+        results.extend(domains)
+        results.extend(posts)
+        return response("OK", items=results)
 
 
 api.add_resource(Search, '/search')

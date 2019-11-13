@@ -113,26 +113,27 @@ class User(db.Model):
                                cascade='all')
     likeds = db.relationship('Like', back_populates='liker', cascade='all')
     voteds = db.relationship('Vote', back_populates='voter', cascade='all')
-    collections = db.relationship('Collect', back_populates='collector', cascade='all')
+    collections = db.relationship('Collect',
+                                  back_populates='collector',
+                                  cascade='all')
     watcheds = db.relationship('Watch',
                                back_populates='watcher',
                                cascade='all')
-    followings = db.relationship('Follow',
-                                 foreign_keys=[Follow.follower_id],
-                                 back_populates='follower',
-                                 lazy='dynamic',
-                                 cascade='all')
-    followers = db.relationship('Follow',
-                                foreign_keys=[Follow.followed_id],
-                                back_populates='followed',
-                                lazy='dynamic',
-                                cascade='all')
+    followings = db.relationship(
+        'Follow',
+        foreign_keys=[Follow.follower_id],
+        back_populates='follower',
+        #  lazy='dynamic',
+        cascade='all')
+    followers = db.relationship(
+        'Follow',
+        foreign_keys=[Follow.followed_id],
+        back_populates='followed',
+        # lazy='dynamic',
+        cascade='all')
 
     def serialize(self, level=0):
-        result = {
-            "nickname": self.nickname,
-            "username": self.username
-        }
+        result = {"nickname": self.nickname, "username": self.username}
 
         if level == 1: return result
 
@@ -260,22 +261,23 @@ class Domain(db.Model):
     watchers = db.relationship('Watch',
                                back_populates='watched',
                                cascade='all')
-    
+
     posts = db.relationship('Post', back_populates='domain', cascade='all')
 
     def serialize(self, level=0):
         result = {
-            "id" : self.id,
-            "title" : self.title,
-            "timestamp" : self.timestamp,
-            "watchers" : len(self.watchers),
-            "bio" : self.bio,
-            "posts" : len(self.posts),
+            "id": self.id,
+            "title": self.title,
+            "timestamp": self.timestamp,
+            "watchers": len(self.watchers),
+            "bio": self.bio,
+            "posts": len(self.posts),
         }
-        if level==1: return result
-        
+        if level == 1: return result
+
         result["description"] = self.description
-        if level==0: return result
+        if level == 0: return result
+
 
 @whooshee.register_model('title', 'description')
 class Post(db.Model):
@@ -349,5 +351,5 @@ class Comment(db.Model):
             "user": self.author.username,
             "post": self.post_id,
             "votes": len(self.voters),
-            "replies" : len(self.replies)
+            "replies": len(self.replies)
         }

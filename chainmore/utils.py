@@ -63,11 +63,13 @@ def exist_nickname(value):
     else:
         return False
 
+
 def exist_domain(value):
     if Domain.query.filter_by(title=value).first():
         return True
     else:
         return False
+
 
 def validate_email(email, length):
     if len(email) > length:

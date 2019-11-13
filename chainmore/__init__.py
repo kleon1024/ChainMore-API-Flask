@@ -68,32 +68,16 @@ def register_commands(app):
     @click.option('--watch', default=30)
     @click.option('--like', default=100)
     @click.option('--vote', default=50)
-    def forge(user,
-              domain,
-              post,
-              follow,
-              comment,
-              collect,
-              watch,
-              like,
-              vote):
+    def forge(user, domain, post, follow, comment, collect, watch, like, vote):
         """Generate fake data."""
         click.echo('Initializing fake data...')
 
-        from .fakes import (fake_admin,
-                            fake_user,
-                            fake_comment,
-                            fake_follow,
-                            fake_domain,
-                            fake_post,
-                            fake_watch,
-                            fake_like,
-                            fake_vote,
-                            fake_collect)
+        from .fakes import (fake_admin, fake_user, fake_comment, fake_follow,
+                            fake_domain, fake_post, fake_watch, fake_like,
+                            fake_vote, fake_collect)
 
         db.drop_all()
         db.create_all()
-
 
         click.echo('Initializing the catagories...')
         Category.init_category()
@@ -118,5 +102,3 @@ def register_commands(app):
         click.echo('Generating %d collects...' % collect)
         fake_collect(collect)
         click.echo('Done')
-
-

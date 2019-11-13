@@ -6,7 +6,7 @@
 import datetime
 
 from flask import Blueprint, request
-from flask_jwt_extended import (create_access_token, jwt_required, 
+from flask_jwt_extended import (create_access_token, jwt_required,
                                 current_user, get_raw_jwt)
 from flask_restful import Api, Resource
 
@@ -21,6 +21,7 @@ blacklist = set()
 
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
+
 
 @jwt.user_loader_callback_loader
 def user_loader_callback(identity):
@@ -71,7 +72,7 @@ class SignIn(Resource):
                 username = user.username
                 expires = datetime.timedelta(hours=1)
                 access_token = create_access_token(identity=username,
-                                                expired=expires)
+                                                   expired=expires)
                 return response("OK",
                                 msg="User Login As {}".format(username),
                                 accessToken=access_token)
@@ -86,6 +87,7 @@ class SignIn(Resource):
 
         return response("SIGN_IN_FAILED", msg="Invalid Credential")
 
+
 class SignOut(Resource):
     @jwt_required
     def delete(self):
@@ -93,6 +95,7 @@ class SignOut(Resource):
         print(jti)
         blacklist.add(jti)
         return response("OK", msg="Successfully logged out")
+
 
 api.add_resource(SignIn, '/signin')
 api.add_resource(SignUp, '/signup')

@@ -8,13 +8,12 @@ import random
 from faker import Faker
 from sqlalchemy.exc import IntegrityError
 
-
 from .extensions import db
 from .models import (User, Post, Domain, Comment, Category)
-from .utils import (exist_username, exist_email, 
-                    exist_nickname, exist_domain)
+from .utils import (exist_username, exist_email, exist_nickname, exist_domain)
 
 fake = Faker(locale='zh_CN')
+
 
 def fake_admin():
     admin = User(nickname='KLEON',
@@ -25,6 +24,7 @@ def fake_admin():
     admin.set_password('hellokleon')
     db.session.add(admin)
     db.session.commit()
+
 
 def fake_user(count=10):
     for _ in range(count):
@@ -48,11 +48,13 @@ def fake_user(count=10):
         except:
             db.session.rollback()
 
+
 def fake_collect(count=30):
     for _ in range(count):
         user = User.query.get(random.randint(1, User.query.count()))
         user.collect(Post.query.get(random.randint(1, Post.query.count())))
     db.session.commit()
+
 
 def fake_comment(count=30):
     for _ in range(count):
@@ -65,11 +67,13 @@ def fake_comment(count=30):
         db.session.add(comment)
     db.session.commit()
 
+
 def fake_vote(count=30):
     for _ in range(count):
         user = User.query.get(random.randint(1, User.query.count()))
         user.vote(Comment.query.get(random.randint(1, Comment.query.count())))
     db.session.commit()
+
 
 def fake_follow(count=30):
     for _ in range(count):
@@ -77,20 +81,21 @@ def fake_follow(count=30):
         user.follow(User.query.get(random.randint(1, User.query.count())))
     db.session.commit()
 
+
 def fake_domain(count=30):
     for _ in range(count):
         while True:
             title = fake.job()
             if not exist_domain(title): break
-        domain = Domain(
-            title = title,
-            description = fake.text(),
-            bio = "名" + fake.job() + "正在" + fake.word(),
-            timestamp = fake.date_time_this_year(),
-            creator=User.query.get(random.randint(1, User.query.count()))
-        )
+        domain = Domain(title=title,
+                        description=fake.text(),
+                        bio="名" + fake.job() + "正在" + fake.word(),
+                        timestamp=fake.date_time_this_year(),
+                        creator=User.query.get(
+                            random.randint(1, User.query.count())))
         db.session.add(domain)
     db.session.commit()
+
 
 def fake_post(count=30):
     for _ in range(count):
@@ -98,19 +103,22 @@ def fake_post(count=30):
             title=fake.sentence(),
             description=fake.text(),
             url="https://juejin.im/post/5db684ddf265da4d495c40e5",
-            timestamp = fake.date_time_this_year(),
-            category = Category.query.get(random.randint(1, Category.query.count())),
-            author = User.query.get(random.randint(1, User.query.count())),
-            domain = Domain.query.get(random.randint(1, Domain.query.count())),
+            timestamp=fake.date_time_this_year(),
+            category=Category.query.get(
+                random.randint(1, Category.query.count())),
+            author=User.query.get(random.randint(1, User.query.count())),
+            domain=Domain.query.get(random.randint(1, Domain.query.count())),
         )
         db.session.add(post)
     db.session.commit()
+
 
 def fake_like(count=50):
     for _ in range(count):
         user = User.query.get(random.randint(1, User.query.count()))
         user.like(Post.query.get(random.randint(1, Post.query.count())))
     db.session.commit()
+
 
 def fake_watch(count=30):
     for _ in range(count):
