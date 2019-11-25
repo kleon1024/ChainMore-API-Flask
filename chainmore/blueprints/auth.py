@@ -7,7 +7,8 @@ import datetime
 
 from flask import Blueprint, request
 from flask_jwt_extended import (create_access_token, jwt_required,
-                                current_user, get_raw_jwt)
+                                current_user, get_raw_jwt,
+                                create_refresh_token, jwt_refresh_token_required)
 from flask_restful import Api, Resource
 
 import base64
@@ -68,23 +69,18 @@ class SignIn(Resource):
 
         if validate_email(username, 18):
             user = User.query.filter_by(email=username.lower()).first()
-            if user is not None and user.validate_password(password):
-                username = user.username
-                expires = datetime.timedelta(hours=1)
-                access_token = create_access_token(identity=username,
-                                                   expired=expires)
-                return response("OK",
-                                msg="User Login As {}".format(username),
-                                accessToken=access_token)
-
-        if validate_username(username, 20):
+        elif validate_username(username, 20):
             user = User.query.filter_by(username=username.lower()).first()
-            if user is not None and user.validate_password(password):
-                access_token = create_access_token(identity=username)
-                return response("OK",
-                                msg="User Login As {}".format(username),
-                                accessToken=access_token)
 
+        if user is not None and user.validate_password(password):
+            username = user.username
+            access_token = create_access_token(identity=username)
+            refresh_token = create_refresh_token(identity=username)
+            return response("OK",
+                            msg="User Login As {}".format(username),
+                            accessToken=access_token,
+                            refreshToken=refresh_token)
+        
         return response("SIGN_IN_FAILED", msg="Invalid Credential")
 
 
@@ -96,7 +92,16 @@ class SignOut(Resource):
         blacklist.add(jti)
         return response("OK", msg="Successfully logged out")
 
+class SigninRefresh(Resource):
+    @jwt_refresh_token_required
+    def get(self):
+        username = current_user.username
+        access_token = create_access_token(identity=username)
+        return response("OK",
+                        msg="Token Refreshed",
+                        accessToken=access_token)
 
 api.add_resource(SignIn, '/signin')
 api.add_resource(SignUp, '/signup')
 api.add_resource(SignOut, '/signout')
+api.add_resource(SigninRefresh, '/signin/refresh')
