@@ -78,6 +78,7 @@ class SignIn(Resource):
             refresh_token = create_refresh_token(identity=username)
             return response("OK",
                             msg="User Login As {}".format(username),
+                            username=username,
                             accessToken=access_token,
                             refreshToken=refresh_token)
         

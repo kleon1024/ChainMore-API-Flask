@@ -311,7 +311,7 @@ class Post(db.Model):
             "description": description_dict,
             "url": self.url,
             "timestamp": self.timestamp,
-            "author": User.query.get(self.author_id).serialize(level=1),
+            "author": self.author.serialize(level=1),
             "category": Category.query.get(self.category_id).category,
             "domain": self.domain.serialize(level=1),
             "votes": len(self.likers),
@@ -347,8 +347,7 @@ class Comment(db.Model):
             "body": self.body,
             "timestamp": self.timestamp,
             "replied": self.replied_id,
-            "author": self.author.nickname,
-            "user": self.author.username,
+            "author": self.author.serialize(level=1),
             "post": self.post_id,
             "votes": len(self.voters),
             "replies": len(self.replies)
