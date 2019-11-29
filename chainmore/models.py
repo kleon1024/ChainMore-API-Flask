@@ -312,7 +312,7 @@ class Post(db.Model):
             "url": self.url,
             "timestamp": self.timestamp,
             "author": self.author.serialize(level=1),
-            "category": Category.query.get(self.category_id).category,
+            "category": self.category.category,
             "domain": self.domain.serialize(level=1),
             "votes": len(self.likers),
             "comments": len(self.comments),
