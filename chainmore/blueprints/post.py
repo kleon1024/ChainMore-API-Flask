@@ -64,7 +64,7 @@ class Posts(Resource):
         try:
             id = int(id)
         except:
-            return response("BAD_REQUEST");
+            return response("BAD_REQUEST")
         
         post = Post.query.get_or_404(id)
         return response("OK", item=post.serialize(level=0))
@@ -127,7 +127,7 @@ class PostComments(Resource):
         try:
             id = int(id)
         except:
-            return response("BAD_REQUEST");
+            return response("BAD_REQUEST")
 
         post = Post.query.get_or_404(id)
         data = request.get_json()
@@ -141,14 +141,14 @@ class PostComments(Resource):
         db.session.add(comment)
         db.session.commit()
 
-        return response("OK", msg="Comment added")
+        return response("OK", item=comment.serialize())
 
     def get(self):
         id = request.args.get('id', '').strip()
         try:
             id = int(id)
         except:
-            return response("BAD_REQUEST");
+            return response("BAD_REQUEST")
         post = Post.query.get_or_404(id)
         comments = Comment.query.with_parent(post).order_by(
             Comment.timestamp.desc()).all()
