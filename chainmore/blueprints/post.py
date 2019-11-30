@@ -60,9 +60,14 @@ class PostTrendings(Resource):
 
 class Posts(Resource):
     def get(self):
-        domain = request.args.get('domain', '').strip()
-        if domain == '':
-            return response("OK")
+        id = request.args.get('id', '').strip()
+        try:
+            id = int(id)
+        except:
+            return response("BAD_REQUEST");
+        
+        post = Post.query.get_or_404(id)
+        return response("OK", item=post.serialize(level=0))
 
     @jwt_required
     def post(self):
@@ -110,11 +115,46 @@ class PostComment(Resource):
     def get(self, id):
         post = Post.query.get_or_404(id)
         comments = Comment.query.with_parent(post).order_by(
-            Comment.timestamp.asc()).all()
+            Comment.timestamp.desc()).all()
         comments = [comment.serialize() for comment in comments]
 
         return response("OK", items=comments)
 
+class PostComments(Resource):
+    @jwt_required
+    def post(self):
+        id = request.args.get('id', '').strip()
+        try:
+            id = int(id)
+        except:
+            return response("BAD_REQUEST");
+
+        post = Post.query.get_or_404(id)
+        data = request.get_json()
+        if data is None:
+            return response("EMPTY_BODY", msg="Empty Body")
+        body = data.get("comment", None)
+        comment = Comment(body=body, author=current_user, post=post)
+        replied_id = data.get("reply", None)
+        if replied_id is not None:
+            comment.replied = Comment.query.get_or_404(replied_id)
+        db.session.add(comment)
+        db.session.commit()
+
+        return response("OK", msg="Comment added")
+
+    def get(self):
+        id = request.args.get('id', '').strip()
+        try:
+            id = int(id)
+        except:
+            return response("BAD_REQUEST");
+        post = Post.query.get_or_404(id)
+        comments = Comment.query.with_parent(post).order_by(
+            Comment.timestamp.desc()).all()
+        comments = [comment.serialize() for comment in comments]
+
+        return response("OK", items=comments)
 
 class PostLike(Resource):
     @jwt_required
@@ -156,6 +196,7 @@ class PostDomain(Resource):
 
 api.add_resource(PostInstance, '/<int:id>')
 api.add_resource(PostComment, '/<int:id>/comment')
+api.add_resource(PostComments, '/comment')
 api.add_resource(PostLike, '/<int:id>/like')
 api.add_resource(PostCollect, '/<int:id>/collect')
 api.add_resource(Posts, '')
