@@ -272,6 +272,7 @@ class Domain(db.Model):
             "watchers": len(self.watchers),
             "bio": self.bio,
             "posts": len(self.posts),
+            "description" : "",
         }
         if level == 1: return result
 

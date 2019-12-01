@@ -184,16 +184,6 @@ class PostCollect(Resource):
         return response("OK", msg="Uncollected")
 
 
-class PostDomain(Resource):
-    def get(self, id):
-        domain = Domain.query.get_or_404(id)
-        posts = Post.query.with_parent(domain).order_by(
-            Post.timestamp.asc()).all()
-
-        posts = [post.serialize(level=1) for post in posts[0:10]]
-        return response("OK", items=posts)
-
-
 api.add_resource(PostInstance, '/<int:id>')
 api.add_resource(PostComment, '/<int:id>/comment')
 api.add_resource(PostComments, '/comment')
@@ -201,4 +191,3 @@ api.add_resource(PostLike, '/<int:id>/like')
 api.add_resource(PostCollect, '/<int:id>/collect')
 api.add_resource(Posts, '')
 api.add_resource(PostTrendings, '/trendings')
-api.add_resource(PostDomain, '/domain/<int:id>')

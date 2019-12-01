@@ -4,6 +4,7 @@
     :url: https://github.com/kleon1024
 """
 import datetime
+import os
 
 from flask import Blueprint, request
 from flask_jwt_extended import (create_access_token, jwt_required,
@@ -23,6 +24,8 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
+access_token_expire_time = datetime.timedelta(minutes=15)
+refresh_token_expire_time = datetime.timedelta(days=30)
 
 @jwt.user_loader_callback_loader
 def user_loader_callback(identity):
