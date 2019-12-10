@@ -15,34 +15,26 @@ api = Api(main_bp)
 
 class Search(Resource):
     def get(self):
-        q = request.args.get('q', '').strip()
+        q = request.args.get('query', '').strip()
         if q == '':
             return response("OK", items=[])
+        offset = int(request.args.get('offset', 1))
+        limit = int(request.args.get('limit', 20))
 
-        category = request.args.get('category', '')
-        results = []
-        users = []
-        domains = []
-        posts = []
-        # if category == 'user' or category == 'all':
-        #     users = User.query.whooshee_search(q).all()
-        #     users = [user.serialize() for user in users]
-        #     for user in users:
-        #         user["type"] = "user"
-        if category == 'domain' or category == 'all':
-            domains = Domain.query.whooshee_search(q).all()
-            domains = [domain.serialize() for domain in domains]
-            for domain in domains:
-                domain["type"] = "domain"
-        if category == 'post' or category == 'all':
-            posts = Post.query.whooshee_search(q).all()
+        type = request.args.get('type', '')
+        if type == 'user':
+            users = User.query.whooshee_search(q).paginate(offset, limit).items
+            users = [user.serialize() for user in users]
+            return response("OK", items=users, type='user')
+        if type == 'domain':
+            domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
+            domains = [domain.serialize(level=1) for domain in domains]
+            return response("OK", items=domains, type='domain')
+        if type == 'post':
+            posts = Post.query.whooshee_search(q).paginate(offset, limit).items
             posts = [post.serialize() for post in posts]
-            for post in posts:
-                post["type"] = "feed"
-        results.extend(users)
-        results.extend(domains)
-        results.extend(posts)
-        return response("OK", items=results)
+            return response("OK", items=posts, type='post')
+        return response("OK", items=[])
 
 class HotSearch(Resource):
     def get(self):
