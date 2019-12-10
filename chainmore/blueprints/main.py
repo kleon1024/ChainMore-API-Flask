@@ -44,5 +44,14 @@ class Search(Resource):
         results.extend(posts)
         return response("OK", items=results)
 
+class HotSearch(Resource):
+    def get(self):
+        domains = Domain.query.order_by(Domain.timestamp.desc()).all()
+        domains = domains[20] if len(domains) > 20 else domains
+        domains = [domain.title for domain in domains]
+        hot = {}
+        hot["queries"] = domains
+        return response("OK", item=hot)
 
 api.add_resource(Search, '/search')
+api.add_resource(HotSearch, '/search/hot')
