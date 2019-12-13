@@ -18,6 +18,7 @@ from .blueprints.main import main_bp
 from .extensions import db, jwt, whooshee
 from .settings import config
 from .models import (Category)
+from flask_migrate import Migrate
 
 
 def create_app(config_name=None):
@@ -40,6 +41,7 @@ def register_extensions(app):
     db.init_app(app)
     whooshee.init_app(app)
     jwt.init_app(app)
+    Migrate(app, db)
 
 
 def register_blueprints(app):
@@ -56,8 +58,23 @@ def register_errorhandlers(app):
     def bad_request(e):
         return {}, 400
 
-
 def register_commands(app):
+    @app.cli.command()
+    def init():
+        """Initialize data"""
+        click.echo('Initializing data...')
+        db.drop_all()
+        db.create_all()
+
+        from .initialize import (admin, root_domain)
+
+        click.echo('Creating admin')
+        admin()
+        click.echo('Creating root domain')
+        root_domain()
+
+        click.echo('Done')
+
     @app.cli.command()
     @click.option('--user', default=30)
     @click.option('--domain', default=10)

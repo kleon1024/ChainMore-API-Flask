@@ -21,6 +21,56 @@ class Category(db.Model):
         db.session.add(category)
         db.session.commit()
 
+class Certify(db.Model):
+    certifier_id = db.Column(db.Integer,
+                             db.ForeignKey('user.id'),
+                             primary_key=True)
+    certified_id = db.Column(db.Integer,
+                             db.ForeignKey('domain.id'),
+                             primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    certifier = db.relationship('User',
+                               foreign_keys=[certifier_id],
+                               back_populates='certifieds',
+                               lazy='joined')
+    certified = db.relationship('Domain',
+                               foreign_keys=[certified_id],
+                               back_populates='certifiers',
+                               lazy='joined')
+
+class Aggregate(db.Model):
+    aggregator_id = db.Column(db.Integer,
+                              db.ForeignKey('domain.id'),
+                              primary_key=True)
+    aggregated_id = db.Column(db.Integer,
+                              db.ForeignKey('domain.id'),
+                              primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    aggregator = db.relationship('Domain',
+                                 foreign_keys=[aggregator_id],
+                                 back_populates='aggregateds',
+                                 lazy='joined')
+    aggregated = db.relationship('Domain',
+                                 foreign_keys=[aggregated_id],
+                                 back_populates='aggregators',
+                                 lazy='joined')
+
+class Depend(db.Model):
+    depended_id = db.Column(db.Integer,
+                            db.ForeignKey('domain.id'),
+                            primary_key=True)
+    dependant_id = db.Column(db.Integer,
+                            db.ForeignKey('domain.id'),
+                            primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    depended = db.relationship('Domain',
+                                foreign_keys=[depended_id],
+                                back_populates='dependants',
+                                lazy='joined')
+    dependant = db.relationship('Domain',
+                                foreign_keys=[dependant_id],
+                                back_populates='dependeds',
+                                lazy='joined')
 
 class Follow(db.Model):
     follower_id = db.Column(db.Integer,
@@ -113,6 +163,7 @@ class User(db.Model):
                                cascade='all')
     likeds = db.relationship('Like', back_populates='liker', cascade='all')
     voteds = db.relationship('Vote', back_populates='voter', cascade='all')
+    certifieds = db.relationship('Certify', back_populates='certifier', cascade='all')
     collections = db.relationship('Collect',
                                   back_populates='collector',
                                   cascade='all')
@@ -123,13 +174,13 @@ class User(db.Model):
         'Follow',
         foreign_keys=[Follow.follower_id],
         back_populates='follower',
-        #  lazy='dynamic',
+         lazy='dynamic',
         cascade='all')
     followers = db.relationship(
         'Follow',
         foreign_keys=[Follow.followed_id],
         back_populates='followed',
-        # lazy='dynamic',
+        lazy='dynamic',
         cascade='all')
 
     def serialize(self, level=0):
@@ -246,6 +297,33 @@ class User(db.Model):
         return Watch.query.with_parent(self).filter_by(
             watched_id=post.id).first() is not None
 
+class Choice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text)
+
+    choiceproblem_id = db.Column(db.Integer, db.ForeignKey('choice_problem.id'))
+    choiceproblem = db.relationship('ChoiceProblem', back_populates='choices')
+
+
+class ChoiceProblem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text)
+
+    rule_id = db.Column(db.Integer, db.ForeignKey('rule.id'))
+    rule = db.relationship('Rule', back_populates='choiceproblems')
+
+    choices = db.relationship('Choice', back_populates='choiceproblem', cascade='all')
+
+
+class Rule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(30), unique=True)
+    count = db.Column(db.Integer)
+
+    domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'))
+    domain = db.relationship('Domain', back_populates='rules')
+
+    choiceproblems = db.relationship('ChoiceProblem', back_populates='rule', cascade='all')
 
 @whooshee.register_model('title', 'description')
 class Domain(db.Model):
@@ -263,21 +341,57 @@ class Domain(db.Model):
                                cascade='all')
 
     posts = db.relationship('Post', back_populates='domain', cascade='all')
+    certifiers = db.relationship('Certify', back_populates='certified', cascade='all')
+
+    rules = db.relationship('Rule', back_populates='domain', cascade='all')
+
+    aggregateds = db.relationship('Aggregate', 
+                                  foreign_keys=[Aggregate.aggregator_id], 
+                                  back_populates='aggregator', 
+                                  lazy='joined',
+                                  cascade='all')
+    
+    aggregators = db.relationship('Aggregate',
+                                  foreign_keys=[Aggregate.aggregated_id],
+                                  back_populates='aggregated',
+                                  lazy='joined',
+                                  cascade='all')
+
+
+    dependeds = db.relationship('Depend',
+                                foreign_keys=[Depend.dependant_id],
+                                back_populates='dependant',
+                                lazy='joined',
+                                cascade='all')
+
+    dependants = db.relationship('Depend',
+                                foreign_keys=[Depend.depended_id],
+                                back_populates='depended',
+                                lazy='joined',
+                                cascade='all')             
 
     def serialize(self, level=0):
-        result = {
-            "id": self.id,
-            "title": self.title,
-            "timestamp": self.timestamp,
-            "watchers": len(self.watchers),
-            "bio": self.bio,
-            "posts": len(self.posts),
-            "description" : "",
-        }
-        if level == 1: return result
+        result = {}
+
+        result["id"] = self.id
+        result["title"] = self.title
+        result["timestamp"] = self.timestamp
+        result["watchers"] = len(self.watchers)
+        result["certifiers"] = len(self.certifiers)
+        result["bio"] = self.bio
+        result["posts"] = len(self.posts)
+        result["description"] = ""
+        
+        if level >= 1: return result
+
+        result["aggregators"] = [a.serialize(level=1) for a in self.aggregators]
+        result["aggregateds"] = [a.serialize(level=1) for a in self.aggregateds]
+
+        result["dependeds"] = [d.serialize(level=1) for d in self.dependeds]
+        result["dependants"] = [d.serialize(level=1) for d in self.dependants]
 
         result["description"] = self.description
-        if level == 0: return result
+        if level >= 0: return result
 
 
 @whooshee.register_model('title', 'description')
