@@ -13,7 +13,7 @@ from .extensions import db, whooshee
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     category = db.Column(db.String(30), unique=True)
-    classifieds = db.relationship('Classify', 
+    classifieds = db.relationship('Classify',
                                   back_populates='classifier',
                                   cascade='all')
 
@@ -29,8 +29,9 @@ class Category(db.Model):
         result["id"] = self.id
         result["category"] = self.category
 
+
 class Classify(db.Model):
-    classified_id = db.Column(db.Integer, 
+    classified_id = db.Column(db.Integer,
                               db.ForeignKey('post.id'),
                               primary_key=True)
     classifier_id = db.Column(db.Integer,
@@ -46,6 +47,7 @@ class Classify(db.Model):
                                  back_populates='classifieds',
                                  lazy='joined')
 
+
 class Certify(db.Model):
     certifier_id = db.Column(db.Integer,
                              db.ForeignKey('user.id'),
@@ -55,13 +57,14 @@ class Certify(db.Model):
                              primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     certifier = db.relationship('User',
-                               foreign_keys=[certifier_id],
-                               back_populates='certifieds',
-                               lazy='joined')
+                                foreign_keys=[certifier_id],
+                                back_populates='certifieds',
+                                lazy='joined')
     certified = db.relationship('Domain',
-                               foreign_keys=[certified_id],
-                               back_populates='certifiers',
-                               lazy='joined')
+                                foreign_keys=[certified_id],
+                                back_populates='certifiers',
+                                lazy='joined')
+
 
 class Aggregate(db.Model):
     aggregator_id = db.Column(db.Integer,
@@ -80,22 +83,24 @@ class Aggregate(db.Model):
                                  back_populates='aggregators',
                                  lazy='joined')
 
+
 class Depend(db.Model):
     depended_id = db.Column(db.Integer,
                             db.ForeignKey('domain.id'),
                             primary_key=True)
     dependant_id = db.Column(db.Integer,
-                            db.ForeignKey('domain.id'),
-                            primary_key=True)
+                             db.ForeignKey('domain.id'),
+                             primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     depended = db.relationship('Domain',
-                                foreign_keys=[depended_id],
-                                back_populates='dependants',
-                                lazy='joined')
+                               foreign_keys=[depended_id],
+                               back_populates='dependants',
+                               lazy='joined')
     dependant = db.relationship('Domain',
                                 foreign_keys=[dependant_id],
                                 back_populates='dependeds',
                                 lazy='joined')
+
 
 class Follow(db.Model):
     follower_id = db.Column(db.Integer,
@@ -190,25 +195,26 @@ class User(db.Model):
                                cascade='all')
     likeds = db.relationship('Like', back_populates='liker', cascade='all')
     voteds = db.relationship('Vote', back_populates='voter', cascade='all')
-    certifieds = db.relationship('Certify', back_populates='certifier', lazy='dynamic', cascade='all')
+    certifieds = db.relationship('Certify',
+                                 back_populates='certifier',
+                                 lazy='dynamic',
+                                 cascade='all')
     collections = db.relationship('Collect',
                                   back_populates='collector',
                                   cascade='all')
     watcheds = db.relationship('Watch',
                                back_populates='watcher',
                                cascade='all')
-    followings = db.relationship(
-        'Follow',
-        foreign_keys=[Follow.follower_id],
-        back_populates='follower',
-         lazy='dynamic',
-        cascade='all')
-    followers = db.relationship(
-        'Follow',
-        foreign_keys=[Follow.followed_id],
-        back_populates='followed',
-        lazy='dynamic',
-        cascade='all')
+    followings = db.relationship('Follow',
+                                 foreign_keys=[Follow.follower_id],
+                                 back_populates='follower',
+                                 lazy='dynamic',
+                                 cascade='all')
+    followers = db.relationship('Follow',
+                                foreign_keys=[Follow.followed_id],
+                                back_populates='followed',
+                                lazy='dynamic',
+                                cascade='all')
 
     def serialize(self, level=0):
         result = {"nickname": self.nickname, "username": self.username}
@@ -324,11 +330,13 @@ class User(db.Model):
         return Watch.query.with_parent(self).filter_by(
             watched_id=post.id).first() is not None
 
+
 class Choice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
 
-    choiceproblem_id = db.Column(db.Integer, db.ForeignKey('choice_problem.id'))
+    choiceproblem_id = db.Column(db.Integer,
+                                 db.ForeignKey('choice_problem.id'))
     choiceproblem = db.relationship('ChoiceProblem', back_populates='choices')
 
     answerproblem = db.relationship('ChoiceProblem', back_populates='answers')
@@ -349,17 +357,21 @@ class ChoiceProblem(db.Model):
     rule_id = db.Column(db.Integer, db.ForeignKey('rule.id'))
     rule = db.relationship('Rule', back_populates='choiceproblems')
 
-    choices = db.relationship('Choice', back_populates='choiceproblem', cascade='all')
-    answers = db.relationship('Choice', back_populates='answerproblem', cascade='all')
+    choices = db.relationship('Choice',
+                              back_populates='choiceproblem',
+                              cascade='all')
+    answers = db.relationship('Choice',
+                              back_populates='answerproblem',
+                              cascade='all')
 
     def add_choices(self, choices, answers):
         for idx, choice in enumerate(choices):
-            c = Choice(body = choice, choiceproblem=self)
+            c = Choice(body=choice, choiceproblem=self)
             if idx in answers:
                 c.answerproblem = self
             db.session.add(c)
         db.session.commit()
-    
+
     def check_answer(self, answers):
         return set(answers) == set([answer.id for answer in self.answers])
 
@@ -369,7 +381,7 @@ class ChoiceProblem(db.Model):
         result["body"] = self.body
         result["choices"] = [c.serialize() for c in self.choices]
         return result
-            
+
 
 class Rule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -381,7 +393,9 @@ class Rule(db.Model):
     domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'))
     domain = db.relationship('Domain', back_populates='rules')
 
-    choiceproblems = db.relationship('ChoiceProblem', back_populates='rule', cascade='all')
+    choiceproblems = db.relationship('ChoiceProblem',
+                                     back_populates='rule',
+                                     cascade='all')
 
     def add_choiceproblem(self, choiceproblems):
         for choiceproblem in choiceproblems:
@@ -394,8 +408,9 @@ class Rule(db.Model):
         result["type"] = self.type
         if self.type == "choiceproblem":
             result["items"] = [cp.serialize() for cp in self.choiceproblems]
-        
+
         return result
+
 
 @whooshee.register_model('title', 'description')
 class Domain(db.Model):
@@ -410,25 +425,35 @@ class Domain(db.Model):
     creator = db.relationship('User', back_populates='domains')
     watchers = db.relationship('Watch',
                                back_populates='watched',
+                               lazy='dynamic',
                                cascade='all')
 
-    posts = db.relationship('Post', back_populates='domain', cascade='all')
-    certifiers = db.relationship('Certify', back_populates='certified', cascade='all')
+    posts = db.relationship('Post',
+                            back_populates='domain',
+                            lazy='dynamic',
+                            cascade='all')
+                            
+    certifiers = db.relationship('Certify',
+                                 back_populates='certified',
+                                 lazy='dynamic',
+                                 cascade='all')
 
-    rules = db.relationship('Rule', back_populates='domain', cascade='all')
+    rules = db.relationship('Rule',
+                            back_populates='domain',
+                            lazy='dynamic',
+                            cascade='all')
 
-    aggregateds = db.relationship('Aggregate', 
-                                  foreign_keys=[Aggregate.aggregator_id], 
-                                  back_populates='aggregator', 
+    aggregateds = db.relationship('Aggregate',
+                                  foreign_keys=[Aggregate.aggregator_id],
+                                  back_populates='aggregator',
                                   lazy='dynamic',
                                   cascade='all')
-    
+
     aggregators = db.relationship('Aggregate',
                                   foreign_keys=[Aggregate.aggregated_id],
                                   back_populates='aggregated',
                                   lazy='dynamic',
                                   cascade='all')
-
 
     dependeds = db.relationship('Depend',
                                 foreign_keys=[Depend.dependant_id],
@@ -437,12 +462,10 @@ class Domain(db.Model):
                                 cascade='all')
 
     dependants = db.relationship('Depend',
-                                foreign_keys=[Depend.depended_id],
-                                back_populates='depended',
-                                lazy='dynamic',
-                                cascade='all')
-
-
+                                 foreign_keys=[Depend.depended_id],
+                                 back_populates='depended',
+                                 lazy='dynamic',
+                                 cascade='all')
 
     def serialize(self, level=0, user=None):
         result = {}
@@ -450,32 +473,43 @@ class Domain(db.Model):
         result["id"] = self.id
         result["title"] = self.title
         result["timestamp"] = self.timestamp
-        result["watchers"] = len(self.watchers)
-        result["certifiers"] = len(self.certifiers)
+        result["watchers"] = len(self.watchers.all())
+        result["certifiers"] = len(self.certifiers.all())
         result["bio"] = self.bio
-        result["posts"] = len(self.posts)
+        result["posts"] = len(self.posts.all())
         result["description"] = ""
-        
-        if level >= 1: return result
-
-        result["aggregators"] = [a.aggregator.serialize(level=1) for a in self.aggregators]
-        result["aggregateds"] = [a.aggregated.serialize(level=1) for a in self.aggregateds]
-
-        result["dependeds"] = [d.depended.serialize(level=1) for d in self.dependeds]
-        result["dependants"] = [d.dependant.serialize(level=1) for d in self.dependants]
-
-        result["description"] = self.description
 
         if user is not None:
             result['certified'] = False
-            if user.certifieds.filter_by(certified_id=self.id).first() is not None:
+            if user.certifieds.filter_by(
+                    certified_id=self.id).first() is not None:
                 result['certified'] = True
             result['depended'] = False
-            for depended in self.dependeds:
-                if user.certifieds.filter_by(certified_id=depended.depended_id).first() is not None:
+            for depended in self.dependeds.all():
+                print(depended)
+                if user.certifieds.filter_by(
+                        certified_id=depended.depended_id).first() is not None:
                     result['depended'] = True
                 else:
                     result['depended'] = False
+
+        if level >= 1: return result
+
+        result["aggregators"] = [
+            a.aggregator.serialize(level=1) for a in self.aggregators
+        ]
+        result["aggregateds"] = [
+            a.aggregated.serialize(level=1) for a in self.aggregateds
+        ]
+
+        result["dependeds"] = [
+            d.depended.serialize(level=1) for d in self.dependeds
+        ]
+        result["dependants"] = [
+            d.dependant.serialize(level=1) for d in self.dependants
+        ]
+
+        result["description"] = self.description
 
         if level >= 0: return result
 
@@ -493,11 +527,12 @@ class Domain(db.Model):
         if depend:
             db.session.delete(depend)
             db.session.commit()
-    
+
     def is_depending(self, domain):
         if domain.id is None:  # when depend self, domain.id will be None
             return False
-        return self.dependants.filter_by(dependant_id=domain.id).first() is not None
+        return self.dependants.filter_by(
+            dependant_id=domain.id).first() is not None
 
     def aggregate(self, domain):
         if not self.is_aggregating(domain):
@@ -522,17 +557,18 @@ class Domain(db.Model):
             certify = Certify(certifier=user, certified=self)
             db.session.add(certify)
             db.session.commit()
-        
+
     def uncertify(self, user):
         certify = self.certifiers.filter_by(certifier_id=user.id).first()
         if certify:
             db.session.delete(certify)
             db.session.commit()
-    
+
     def is_certified(self, user):
-        if user.id is None: 
+        if user.id is None:
             return False
-        return self.certifiers.filter_by(certifier_id=user.id).first() is not None
+        return self.certifiers.filter_by(
+            certifier_id=user.id).first() is not None
 
 
 @whooshee.register_model('title', 'description')
@@ -547,9 +583,9 @@ class Post(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'))
 
-    classifiers = db.relationship('Classify', 
-                                   back_populates='classified', 
-                                   cascade='all')
+    classifiers = db.relationship('Classify',
+                                  back_populates='classified',
+                                  cascade='all')
     author = db.relationship('User', back_populates='posts')
     comments = db.relationship('Comment', back_populates='post', cascade='all')
     collectors = db.relationship('Collect',
@@ -570,7 +606,8 @@ class Post(db.Model):
             "url": self.url,
             "timestamp": self.timestamp,
             "author": self.author.serialize(level=1),
-            "categories": [category.serialize() for category in self.classifiers],
+            "categories":
+            [category.serialize() for category in self.classifiers],
             "domain": self.domain.serialize(level=1),
             "votes": len(self.likers),
             "comments": len(self.comments),

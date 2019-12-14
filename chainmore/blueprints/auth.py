@@ -9,7 +9,8 @@ import os
 from flask import Blueprint, request
 from flask_jwt_extended import (create_access_token, jwt_required,
                                 current_user, get_raw_jwt,
-                                create_refresh_token, jwt_refresh_token_required)
+                                create_refresh_token,
+                                jwt_refresh_token_required)
 from flask_restful import Api, Resource
 
 import base64
@@ -26,6 +27,7 @@ api = Api(auth_bp)
 
 access_token_expire_time = datetime.timedelta(minutes=15)
 refresh_token_expire_time = datetime.timedelta(days=30)
+
 
 @jwt.user_loader_callback_loader
 def user_loader_callback(identity):
@@ -53,8 +55,8 @@ class SignUp(Resource):
             return response("EMAIL_EXIST", msg="Mail Exist")
         if exist_username(username):
             return response("USERNAME_EXIST", msg="Username Exist")
-        user = User(nickname=nickname, 
-                    email=email, 
+        user = User(nickname=nickname,
+                    email=email,
                     username=username,
                     root_certified=False,
                     bio="")
@@ -86,7 +88,7 @@ class SignIn(Resource):
                             username=username,
                             accessToken=access_token,
                             refreshToken=refresh_token)
-        
+
         return response("SIGN_IN_FAILED", msg="Invalid Credential")
 
 
@@ -98,14 +100,14 @@ class SignOut(Resource):
         blacklist.add(jti)
         return response("OK", msg="Successfully logged out")
 
+
 class SigninRefresh(Resource):
     @jwt_refresh_token_required
     def get(self):
         username = current_user.username
         access_token = create_access_token(identity=username)
-        return response("OK",
-                        msg="Token Refreshed",
-                        accessToken=access_token)
+        return response("OK", msg="Token Refreshed", accessToken=access_token)
+
 
 api.add_resource(SignIn, '/signin')
 api.add_resource(SignUp, '/signup')

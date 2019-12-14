@@ -98,4 +98,3 @@ def validate_password(password, length):
     if not re.match(pattern, password):
         return False
     return True
-

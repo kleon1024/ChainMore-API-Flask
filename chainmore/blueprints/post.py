@@ -65,7 +65,7 @@ class Posts(Resource):
             id = int(id)
         except:
             return response("BAD_REQUEST")
-        
+
         post = Post.query.get_or_404(id)
         return response("OK", item=post.serialize(level=0))
 
@@ -120,6 +120,7 @@ class PostComment(Resource):
 
         return response("OK", items=comments)
 
+
 class PostComments(Resource):
     @jwt_required
     def post(self):
@@ -155,6 +156,7 @@ class PostComments(Resource):
         comments = [comment.serialize() for comment in comments]
 
         return response("OK", items=comments)
+
 
 class PostLike(Resource):
     @jwt_required

@@ -9,8 +9,8 @@ from faker import Faker
 from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
-from .models import (User, Post, Domain, Comment, Category,
-                    ChoiceProblem, Rule)
+from .models import (User, Post, Domain, Comment, Category, ChoiceProblem,
+                     Rule)
 from .utils import (exist_username, exist_email, exist_nickname, exist_domain)
 
 fake = Faker(locale='zh_CN')
@@ -27,22 +27,22 @@ def admin():
     db.session.add(admin)
     db.session.commit()
 
+
 def root_domain():
-    domain = Domain(title="阡陌",
-                    description="领域根源",
-                    bio="人正在关注",
-                    creator=User.query.filter_by(username='kleon').first())
+    admin = User.query.filter_by(username='kleon').first()
+    domain = Domain(title="阡陌", description="领域根源", bio="人正在关注", creator=admin)
+    domain.certify(admin)
     cp = ChoiceProblem(body="良好的社区氛围离不开每个人的一言一行，以下属于正面有效发言的是：")
-    cp.add_choices(["可以试着尝试一些不同的风格。",
-                    "这点水平就不要出来丢人现眼了！",
-                    "要不要加入我们的学习小组？",
-                    "今天天气不错哦。"], [0])
+    cp.add_choices(
+        ["可以试着尝试一些不同的风格。", "这点水平就不要出来丢人现眼了！", "要不要加入我们的学习小组？", "今天天气不错哦。"],
+        [0])
     rule = Rule(type="choiceproblem", domain=domain, count=10)
     rule.add_choiceproblem([cp])
 
     db.session.add(rule)
     db.session.add(domain)
     db.session.commit()
+
 
 def super_domain():
     root = Domain.query.get_or_404(1)
@@ -57,5 +57,6 @@ def super_domain():
                         bio=super_domain[2],
                         creator=User.query.filter_by(username='kleon').first())
         root.aggregate(domain)
+        root.add_dependant(domain)
         db.session.add(domain)
     db.session.commit()

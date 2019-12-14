@@ -70,10 +70,11 @@ class Domains(Resource):
             id = int(id)
         except:
             return response("BAD_REQUEST")
-        
+
         domain = Domain.query.get_or_404(id)
         result = domain.serialize(level=0, user=current_user)
         return response("OK", item=result)
+
 
 class DomainWatch(Resource):
     @jwt_required
@@ -88,6 +89,7 @@ class DomainWatch(Resource):
         current_user.unwatch(domain)
         return response("OK", msg="Domain unwatched")
 
+
 class DomainPost(Resource):
     def get(self):
         id = request.args.get('id', '').strip()
@@ -101,6 +103,7 @@ class DomainPost(Resource):
 
         posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
+
 
 class DomainCerification(Resource):
     def get(self):
@@ -134,10 +137,12 @@ class DomainCerification(Resource):
                 return response("BAD_REQUEST")
             if replied_rule.type == "choiceproblem":
                 for replied_choiceproblem in replied_rule["choiceproblems"]:
-                    choiceproblem = domain_rule.choiceproblems.filter_by(id=replied_choiceproblem["id"]).first()
+                    choiceproblem = domain_rule.choiceproblems.filter_by(
+                        id=replied_choiceproblem["id"]).first()
                     if choiceproblem is None:
                         return response("BAD_REQUEST")
-                    if not choiceproblem.check_answer(replied_choiceproblem["answer"]):
+                    if not choiceproblem.check_answer(
+                            replied_choiceproblem["answer"]):
                         return response("CERTIFY_FAILED")
         domain.certify(current_user)
         return response("OK", msg="Certified")
@@ -153,9 +158,23 @@ class DomainCerification(Resource):
         domain = Domain.query.get_or_404(id)
         domain.uncertify(current_user)
         return response("OK", msg="Certified")
-        
+
+
+class DomainHot(Resource):
+    @jwt_required
+    def get(self):
+        domains = Domain.query.all()
+        if len(domains) >= 10:
+            domains = domains[0:9]
+        domains = [
+            domain.serialize(level=1, user=current_user) for domain in domains
+        ]
+        return response("OK", items=domains)
+
+
 api.add_resource(DomainInstance, '/<int:id>')
 api.add_resource(Domains, '')
 api.add_resource(DomainWatch, '/<int:id>/watch')
 api.add_resource(DomainPost, '/post')
 api.add_resource(DomainCerification, '/certify')
+api.add_resource(DomainHot, '/hot')

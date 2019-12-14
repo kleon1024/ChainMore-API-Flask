@@ -58,6 +58,7 @@ def register_errorhandlers(app):
     def bad_request(e):
         return {}, 400
 
+
 def register_commands(app):
     @app.cli.command()
     def init():

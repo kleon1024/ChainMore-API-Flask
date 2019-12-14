@@ -28,7 +28,8 @@ class Search(Resource):
             users = [user.serialize() for user in users]
             return response("OK", items=users, type='user')
         if type == 'domain':
-            domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
+            domains = Domain.query.whooshee_search(q).paginate(offset,
+                                                               limit).items
             domains = [domain.serialize(level=1) for domain in domains]
             return response("OK", items=domains, type='domain')
         if type == 'post':
@@ -36,6 +37,7 @@ class Search(Resource):
             posts = [post.serialize() for post in posts]
             return response("OK", items=posts, type='post')
         return response("OK", items=[])
+
 
 class HotSearch(Resource):
     def get(self):
@@ -45,6 +47,7 @@ class HotSearch(Resource):
         hot = {}
         hot["queries"] = domains
         return response("OK", item=hot)
+
 
 class DomainSearch(Resource):
     @jwt_required
@@ -56,8 +59,11 @@ class DomainSearch(Resource):
         limit = int(request.args.get('limit', 20))
 
         domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
-        domains = [domain.serialize(level=1, user=current_user) for domain in domains]
+        domains = [
+            domain.serialize(level=1, user=current_user) for domain in domains
+        ]
         return response("OK", items=domains)
+
 
 api.add_resource(Search, '/search')
 api.add_resource(HotSearch, '/search/hot')
