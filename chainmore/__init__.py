@@ -66,12 +66,16 @@ def register_commands(app):
         db.drop_all()
         db.create_all()
 
-        from .initialize import (admin, root_domain)
+        from .initialize import (admin, root_domain, super_domain)
 
+        click.echo('Intializing categories')
+        Category.init_category(['文章', '付费', '广告'])
         click.echo('Creating admin')
         admin()
         click.echo('Creating root domain')
         root_domain()
+        click.echo('Creating super domains')
+        super_domain()
 
         click.echo('Done')
 
@@ -96,8 +100,8 @@ def register_commands(app):
         db.drop_all()
         db.create_all()
 
-        click.echo('Initializing the catagories...')
-        Category.init_category()
+        click.echo('Initializing categories...')
+        Category.init_category(['文章'])
         click.echo('Generating the administrator...')
         fake_admin()
         click.echo('Generating %d users...' % user)

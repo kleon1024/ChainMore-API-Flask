@@ -5,6 +5,7 @@
 """
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_jwt_extended import (jwt_required, current_user)
 
 from ..utils import (response)
 from ..models import (User, Domain, Post)
@@ -45,5 +46,19 @@ class HotSearch(Resource):
         hot["queries"] = domains
         return response("OK", item=hot)
 
+class DomainSearch(Resource):
+    @jwt_required
+    def get(self):
+        q = request.args.get('query', '').strip()
+        if q == '':
+            return response("OK", items=[])
+        offset = int(request.args.get('offset', 1))
+        limit = int(request.args.get('limit', 20))
+
+        domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
+        domains = [domain.serialize(level=1, user=current_user) for domain in domains]
+        return response("OK", items=domains)
+
 api.add_resource(Search, '/search')
 api.add_resource(HotSearch, '/search/hot')
+api.add_resource(DomainSearch, '/search/domain')

@@ -44,9 +44,8 @@ class SignUp(Resource):
             return response("EMPTY_BODY", msg="Empty Body")
         nickname = data.get("nickname", "")
         email = data.get("email", "")
-        payload = data.get("payload", "")
-        payload = base64.b64decode(payload).decode("utf-8")
-        username, password = payload.split(':')
+        username = data.get("username", "")
+        password = data.get("password", "")
         # if not validate_email(email, 64) or \
         # not validate_username(username, 20):
         #     return response("BAD_REQUEST", msg="Invalid Data")
@@ -54,7 +53,11 @@ class SignUp(Resource):
             return response("EMAIL_EXIST", msg="Mail Exist")
         if exist_username(username):
             return response("USERNAME_EXIST", msg="Username Exist")
-        user = User(nickname=nickname, email=email, username=username)
+        user = User(nickname=nickname, 
+                    email=email, 
+                    username=username,
+                    root_certified=False,
+                    bio="")
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
@@ -66,9 +69,8 @@ class SignIn(Resource):
         data = request.get_json()
         if data is None:
             return response("EMPTY_BODY", msg="Empty Body")
-        payload = data.get("payload", "")
-        payload = base64.b64decode(payload).decode("utf-8")
-        username, password = payload.split(':')
+        username = data.get("username", "")
+        password = data.get("password", "")
 
         if validate_email(username, 18):
             user = User.query.filter_by(email=username.lower()).first()

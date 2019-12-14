@@ -30,6 +30,8 @@ def response(status="OK", **kwargs):
     elif status == "CREATED":
         result["code"] = 20000
         status_code = 201
+    elif status == "CERTIFY_FAILED":
+        result["code"] = 30000
     elif status == "BAD_REQUEST":
         abort(400)
     elif status == "UNAUTHORIZED":
@@ -96,3 +98,4 @@ def validate_password(password, length):
     if not re.match(pattern, password):
         return False
     return True
+
