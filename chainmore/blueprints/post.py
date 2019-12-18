@@ -54,7 +54,7 @@ class PostInstance(Resource):
 class PostTrendings(Resource):
     def get(self):
         posts = Post.query.order_by(Post.timestamp.desc()).all()
-        posts = [post.serialize(level=1) for post in posts[0:10]]
+        posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
 
 
@@ -74,21 +74,30 @@ class Posts(Resource):
         data = request.get_json()
         if data is None:
             return response("OK", )
+        try:
+            domain = int(data.get("domain", None))
+        except:
+            return response("BAD_REQUEST")
         title = data.get("title", None)
-        url = data.get("url", None)
-        description = data.get("description", None)
-        category = data.get("category", None)
-        domain = data.get("domain", None)
+        if (title is None):
+            return response("BAD_REQUEST")
+        url = data.get("url", "")
+        description = data.get("description", "")
+        categories = data.get("categories", [])
 
-        domain = Domain.query.get_or_404(int(domain))
-        category = Category.query.filter_by(category=category).first_or_404()
+        if (url == "" and description == ""):
+            return response("BAD_REQUEST")
+        
+        domain = Domain.query.get_or_404(domain)
 
         post = Post(title=title,
                     description=description,
                     url=url,
-                    category_id=category.id,
                     author_id=current_user.id,
                     domain=domain)
+        for category in categories:
+            c = Category.query.get_or_404(category)
+            post.add_category(c)
         db.session.add(post)
         db.session.commit()
 

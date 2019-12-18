@@ -12,6 +12,7 @@ from flask import Flask
 from .blueprints.auth import auth_bp
 from .blueprints.domain import domain_bp
 from .blueprints.comment import comment_bp
+from .blueprints.sparkle import sparkle_bp
 from .blueprints.post import post_bp
 from .blueprints.user import user_bp
 from .blueprints.main import main_bp
@@ -49,6 +50,7 @@ def register_blueprints(app):
     app.register_blueprint(domain_bp, url_prefix='/v1/domain')
     app.register_blueprint(comment_bp, url_prefix='/v1/comment')
     app.register_blueprint(post_bp, url_prefix='/v1/post')
+    app.register_blueprint(sparkle_bp, url_prefix='/v1/sparkle')
     app.register_blueprint(user_bp, url_prefix='/v1/user')
     app.register_blueprint(main_bp, url_prefix='/v1')
 

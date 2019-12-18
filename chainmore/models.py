@@ -138,11 +138,11 @@ class Like(db.Model):
                          db.ForeignKey('user.id'),
                          primary_key=True)
     liked_id = db.Column(db.Integer,
-                         db.ForeignKey('post.id'),
+                         db.ForeignKey('sparkle.id'),
                          primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     liker = db.relationship('User', back_populates='likeds', lazy='joined')
-    liked = db.relationship('Post', back_populates='likers', lazy='joined')
+    liked = db.relationship('Sparkle', back_populates='likers', lazy='joined')
 
 
 class Collect(db.Model):
@@ -193,6 +193,7 @@ class User(db.Model):
     comments = db.relationship('Comment',
                                back_populates='author',
                                cascade='all')
+    sparkles = db.relationship('Sparkle', back_populates='author', cascade='all')
     likeds = db.relationship('Like', back_populates='liker', cascade='all')
     voteds = db.relationship('Vote', back_populates='voter', cascade='all')
     certifieds = db.relationship('Certify',
@@ -280,21 +281,22 @@ class User(db.Model):
         return Collect.query.with_parent(self).filter_by(
             collected_id=post.id).first() is not None
 
-    def like(self, post):
-        if not self.is_liking(post):
-            like = Like(liker=self, liked=post)
+    def like(self, sparkle):
+        if not self.is_liking(sparkle):
+            like = Like(liker=self, liked=sparkle)
             db.session.add(like)
             db.session.commit()
 
-    def unlike(self, post):
-        like = Like.query.with_parent(self).filter_by(liked_id=post.id).first()
+    def unlike(self, sparkle):
+        like = Like.query.with_parent(self).filter_by(
+            liked_id=sparkle.id).first()
         if like:
             db.session.delete(like)
             db.session.commit()
 
-    def is_liking(self, post):
+    def is_liking(self, sparkle):
         return Like.query.with_parent(self).filter_by(
-            liked_id=post.id).first() is not None
+            liked_id=sparkle.id).first() is not None
 
     def vote(self, comment):
         if not self.is_voting(comment):
@@ -432,7 +434,7 @@ class Domain(db.Model):
                             back_populates='domain',
                             lazy='dynamic',
                             cascade='all')
-                            
+
     certifiers = db.relationship('Certify',
                                  back_populates='certified',
                                  lazy='dynamic',
@@ -571,6 +573,59 @@ class Domain(db.Model):
             certifier_id=user.id).first() is not None
 
 
+@whooshee.register_model('body')
+class Sparkle(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.String(100))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    deleted = db.Column(db.Integer, default=0)
+
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    replied_id = db.Column(db.Integer, db.ForeignKey('sparkle.id'))
+
+    author = db.relationship('User', back_populates='sparkles')
+
+    replies = db.relationship('Sparkle',
+                              back_populates='replied',
+                              lazy='dynamic',
+                              cascade='all')
+
+    replied = db.relationship('Sparkle',
+                              back_populates='replies',
+                              remote_side=[id])
+
+    likers = db.relationship('Like', back_populates='liked', cascade='all')
+
+    like_count = db.Column(db.Integer)
+
+    def serialize(self, level=0):
+        result = {}
+
+        result["id"] = self.id
+        result["body"] = self.body
+        result["timestamp"] = self.timestamp
+        result["author"] = self.author.serialize(level=1)
+        result["replied"] = self.replied.id  if self.replied else None
+        if level == 2:
+            result["replies"] = []
+        elif level == 1:
+            result["replies"] = [
+                reply.serialize(level=2)
+                for reply in self.replies.all()
+            ]
+            result["replies"] = result["replies"][0] if len(
+                result["replies"]) else result["replies"]
+        else:
+            result["replies"] = [
+                reply.serialize(level=0) for reply in self.replies.order_by(
+                    self.timestamp.desc()).all()
+            ]
+        result["votes"] = len(self.likers)
+
+        return result
+
+
 @whooshee.register_model('title', 'description')
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -579,7 +634,6 @@ class Post(db.Model):
     url = db.Column(db.String(1000))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'))
 
@@ -591,8 +645,19 @@ class Post(db.Model):
     collectors = db.relationship('Collect',
                                  back_populates='collected',
                                  cascade='all')
-    likers = db.relationship('Like', back_populates='liked', cascade='all')
     domain = db.relationship('Domain', back_populates='posts')
+
+    def add_category(self, category):
+        if self.classifiers.query.with_parent(self).filter_by(category.id).first() is not None:
+            classify = Classify(classifier=category, classified=self)
+            db.session.add(classify)
+            db.session.commit()
+
+    def remove_category(self, category):
+        category = self.classifiers.query.with_parent(self).filter_by(category.id).first()
+        if category:
+            db.session.remove(category)
+            db.session.commit()
 
     def serialize(self, level=0):
 
@@ -609,7 +674,6 @@ class Post(db.Model):
             "categories":
             [category.serialize() for category in self.classifiers],
             "domain": self.domain.serialize(level=1),
-            "votes": len(self.likers),
             "comments": len(self.comments),
             "collects": len(self.collectors),
         }
@@ -619,7 +683,7 @@ class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    flag = db.Column(db.Integer, default=0)
+    deleted = db.Column(db.Integer, default=0)
 
     replied_id = db.Column(db.Integer, db.ForeignKey('comment.id'))
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
