@@ -38,17 +38,19 @@ class Domains(Resource):
         aggregator = data.get("aggregator", None)
         if aggregator is None:
             return response("BAD_REQUEST", msg="No aggregator provided")
-
         try:
             depended = int(depended)
             aggregator = int(aggregator)
         except:
             return response("BAD_REQUEST")
 
+        if Domain.query.filter_by(title=title).first() is not None:
+            return response("DOMAIN_EXIST")
+
         domain = Domain(
             title=title,
             description=description,
-            author_id=current_user.id,
+            creator_id=current_user.id,
             bio=bio,
         )
 
@@ -130,12 +132,12 @@ class DomainCerification(Resource):
         if rules is None:
             return response("EMPTY_BODY", msg="Empty Body")
         for domain_rule in domain_rules:
-            replied_rule = rules.get(domain_rule.id, None)
+            replied_rule = rules.get(str(domain_rule.id), None)
             if replied_rule is None:
                 return response("BAD_REQUEST")
-            if replied_rule.type != domain_rule.type:
+            if replied_rule["type"] != domain_rule.type:
                 return response("BAD_REQUEST")
-            if replied_rule.type == "choiceproblem":
+            if replied_rule["type"] == "choiceproblem":
                 for replied_choiceproblem in replied_rule["choiceproblems"]:
                     choiceproblem = domain_rule.choiceproblems.filter_by(
                         id=replied_choiceproblem["id"]).first()

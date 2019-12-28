@@ -5,6 +5,7 @@
 """
 import datetime
 import os
+import time
 
 from flask import Blueprint, request
 from flask_jwt_extended import (create_access_token, jwt_required,
@@ -55,6 +56,9 @@ class SignUp(Resource):
             return response("EMAIL_EXIST", msg="Mail Exist")
         if exist_username(username):
             return response("USERNAME_EXIST", msg="Username Exist")
+
+        if nickname == "":
+            nickname = "探索者" + username + str(int(time.time() % 10000000000))
         user = User(nickname=nickname,
                     email=email,
                     username=username,
@@ -106,7 +110,8 @@ class SigninRefresh(Resource):
     def get(self):
         username = current_user.username
         access_token = create_access_token(identity=username)
-        return response("OK", msg="Token Refreshed", accessToken=access_token)
+        refresh_token = create_refresh_token(identity=username)
+        return response("OK", msg="Token Refreshed", accessToken=access_token, refreshToken=refresh_token)
 
 
 api.add_resource(SignIn, '/signin')

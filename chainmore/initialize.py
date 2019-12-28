@@ -31,12 +31,18 @@ def admin():
 def root_domain():
     admin = User.query.filter_by(username='kleon').first()
     domain = Domain(title="阡陌", description="领域根源", bio="人正在关注", creator=admin)
-    domain.certify(admin)
+    # domain.certify(admin)
     cp = ChoiceProblem(body="良好的社区氛围离不开每个人的一言一行，以下属于正面有效发言的是：")
     cp.add_choices(
         ["可以试着尝试一些不同的风格。", "这点水平就不要出来丢人现眼了！", "要不要加入我们的学习小组？", "今天天气不错哦。"],
         [0])
     rule = Rule(type="choiceproblem", domain=domain, count=10)
+    rule.add_choiceproblem([cp])
+
+    cp = ChoiceProblem(body="遇到极端不友善发言的应对方法是：")
+    cp.add_choices(
+        ["直接举报", "友善提醒", "冷嘲热讽", "人身攻击"],
+        [0])
     rule.add_choiceproblem([cp])
 
     db.session.add(rule)

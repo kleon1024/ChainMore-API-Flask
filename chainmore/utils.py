@@ -27,6 +27,8 @@ def response(status="OK", **kwargs):
         result["code"] = 20101
     elif status == "SIGN_IN_FAILED":
         result["code"] = 20102
+    elif status == "DOMAIN_EXIST":
+        result["code"] = 20200
     elif status == "CREATED":
         result["code"] = 20000
         status_code = 201

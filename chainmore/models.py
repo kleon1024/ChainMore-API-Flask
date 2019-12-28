@@ -339,9 +339,11 @@ class Choice(db.Model):
 
     choiceproblem_id = db.Column(db.Integer,
                                  db.ForeignKey('choice_problem.id'))
-    choiceproblem = db.relationship('ChoiceProblem', back_populates='choices')
+    choiceproblem = db.relationship('ChoiceProblem', foreign_keys=[choiceproblem_id], back_populates='choices')
 
-    answerproblem = db.relationship('ChoiceProblem', back_populates='answers')
+    answerproblem_id = db.Column(db.Integer,
+                                 db.ForeignKey('choice_problem.id'))
+    answerproblem = db.relationship('ChoiceProblem', foreign_keys=[answerproblem_id], back_populates='answers')
 
     def serialize(self):
         result = {}
@@ -361,9 +363,11 @@ class ChoiceProblem(db.Model):
 
     choices = db.relationship('Choice',
                               back_populates='choiceproblem',
+                              foreign_keys=[Choice.choiceproblem_id], 
                               cascade='all')
     answers = db.relationship('Choice',
                               back_populates='answerproblem',
+                              foreign_keys=[Choice.answerproblem_id], 
                               cascade='all')
 
     def add_choices(self, choices, answers):
@@ -374,7 +378,7 @@ class ChoiceProblem(db.Model):
             db.session.add(c)
         db.session.commit()
 
-    def check_answer(self, answers):
+    def check_answer(self, answers): 
         return set(answers) == set([answer.id for answer in self.answers])
 
     def serialize(self):
@@ -382,6 +386,7 @@ class ChoiceProblem(db.Model):
         result["id"] = self.id
         result["body"] = self.body
         result["choices"] = [c.serialize() for c in self.choices]
+        result["rule"] = self.rule_id
         return result
 
 
@@ -397,6 +402,7 @@ class Rule(db.Model):
 
     choiceproblems = db.relationship('ChoiceProblem',
                                      back_populates='rule',
+                                     lazy='dynamic',
                                      cascade='all')
 
     def add_choiceproblem(self, choiceproblems):
@@ -409,7 +415,7 @@ class Rule(db.Model):
         result["id"] = self.id
         result["type"] = self.type
         if self.type == "choiceproblem":
-            result["items"] = [cp.serialize() for cp in self.choiceproblems]
+            result["choiceproblems"] = [cp.serialize() for cp in self.choiceproblems]
 
         return result
 
@@ -488,7 +494,6 @@ class Domain(db.Model):
                 result['certified'] = True
             result['depended'] = False
             for depended in self.dependeds.all():
-                print(depended)
                 if user.certifieds.filter_by(
                         certified_id=depended.depended_id).first() is not None:
                     result['depended'] = True
