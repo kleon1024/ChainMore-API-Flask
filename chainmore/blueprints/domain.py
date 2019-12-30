@@ -16,9 +16,13 @@ api = Api(domain_bp)
 
 
 class DomainInstance(Resource):
-    def get(self, id):
+    def get(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         domain = Domain.query.get_or_404(id)
-        return response("OK", item=domain.serialize())
+        return response("OK", item=domain.serialize(level=0))
 
 
 class Domains(Resource):
@@ -67,9 +71,8 @@ class Domains(Resource):
 
     @jwt_required
     def get(self):
-        id = request.args.get('id', '').strip()
         try:
-            id = int(id)
+            id = int(request.args.get('id', '').strip())
         except:
             return response("BAD_REQUEST")
 
@@ -94,20 +97,24 @@ class DomainWatch(Resource):
 
 class DomainPost(Resource):
     def get(self):
-        id = request.args.get('id', '').strip()
         try:
-            id = int(id)
+            id = int(request.args.get('id', '').strip())
+            offset = int(request.args.get('offset', 1))
+            limit = int(request.args.get('limit', 20))
         except:
             return response("BAD_REQUEST")
         domain = Domain.query.get_or_404(id)
-        posts = Post.query.with_parent(domain).order_by(
-            Post.timestamp.asc()).all()
+        subdomains = [id]
+        subdomains.extend(domain.subdomains())
+        posts = Post.query.filter(Post.domain_id.in_(subdomains))\
+            .order_by(Post.timestamp.desc()).paginate(offset, limit).items
 
         posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
 
 
 class DomainCerification(Resource):
+    @jwt_required
     def get(self):
         id = request.args.get('id', '').strip()
         try:
@@ -147,6 +154,8 @@ class DomainCerification(Resource):
                             replied_choiceproblem["answer"]):
                         return response("CERTIFY_FAILED")
         domain.certify(current_user)
+        if (domain.id == 1):
+            current_user.root_certified = True
         return response("OK", msg="Certified")
 
     @jwt_required
@@ -174,7 +183,7 @@ class DomainHot(Resource):
         return response("OK", items=domains)
 
 
-api.add_resource(DomainInstance, '/<int:id>')
+api.add_resource(DomainInstance, '/unsign')
 api.add_resource(Domains, '')
 api.add_resource(DomainWatch, '/<int:id>/watch')
 api.add_resource(DomainPost, '/post')

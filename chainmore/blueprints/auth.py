@@ -90,6 +90,7 @@ class SignIn(Resource):
             return response("OK",
                             msg="User Login As {}".format(username),
                             username=username,
+                            nickname=user.nickname,
                             accessToken=access_token,
                             refreshToken=refresh_token)
 
@@ -100,7 +101,6 @@ class SignOut(Resource):
     @jwt_required
     def delete(self):
         jti = get_raw_jwt()['jti']
-        print(jti)
         blacklist.add(jti)
         return response("OK", msg="Successfully logged out")
 

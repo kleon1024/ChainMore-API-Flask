@@ -204,6 +204,7 @@ class User(db.Model):
                                   back_populates='collector',
                                   cascade='all')
     watcheds = db.relationship('Watch',
+
                                back_populates='watcher',
                                cascade='all')
     followings = db.relationship('Follow',
@@ -218,20 +219,23 @@ class User(db.Model):
                                 cascade='all')
 
     def serialize(self, level=0):
-        result = {"nickname": self.nickname, "username": self.username}
+        result = {"nickname": self.nickname, 
+                  "username": self.username}
 
         if level == 1: return result
 
         result["bio"] = self.bio
         result["likeds"] = len(self.likeds)
         result["watcheds"] = len(self.watcheds)
-        result["followings"] = len(self.followings)
-        result["followers"] = len(self.followers)
+        result["followings"] = len(self.followings.all())
+        result["followers"] = len(self.followers.all())
         result["posts"] = len(self.posts)
         result["domains"] = len(self.domains)
         result["comments"] = len(self.comments)
+        result["certifieds"] = len(self.certifieds.all())
+        result["rootCertified"] = self.root_certified
 
-        if level == 0: return result
+        return result
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -475,6 +479,14 @@ class Domain(db.Model):
                                  lazy='dynamic',
                                  cascade='all')
 
+    def subdomains(self):
+        domains = []
+        for agg in self.aggregateds.all():
+            domains.append(agg.aggregated.id)
+            domains.extend(agg.aggregated.subdomains())
+        return domains
+
+
     def serialize(self, level=0, user=None):
         result = {}
 
@@ -492,28 +504,29 @@ class Domain(db.Model):
             if user.certifieds.filter_by(
                     certified_id=self.id).first() is not None:
                 result['certified'] = True
-            result['depended'] = False
+            result['depended'] = True
             for depended in self.dependeds.all():
                 if user.certifieds.filter_by(
                         certified_id=depended.depended_id).first() is not None:
                     result['depended'] = True
                 else:
                     result['depended'] = False
+                    break
 
         if level >= 1: return result
 
         result["aggregators"] = [
-            a.aggregator.serialize(level=1) for a in self.aggregators
+            a.aggregator.serialize(level=1) for a in self.aggregators.paginate(1, 1).items
         ]
         result["aggregateds"] = [
-            a.aggregated.serialize(level=1) for a in self.aggregateds
+            a.aggregated.serialize(level=1) for a in self.aggregateds.paginate(1, 3).items
         ]
 
         result["dependeds"] = [
-            d.depended.serialize(level=1) for d in self.dependeds
+            d.depended.serialize(level=1) for d in self.dependeds.paginate(1, 1).items
         ]
         result["dependants"] = [
-            d.dependant.serialize(level=1) for d in self.dependants
+            d.dependant.serialize(level=1) for d in self.dependants.paginate(1, 3).items
         ]
 
         result["description"] = self.description
