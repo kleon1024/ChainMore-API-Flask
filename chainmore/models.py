@@ -202,10 +202,11 @@ class User(db.Model):
                                  cascade='all')
     collections = db.relationship('Collect',
                                   back_populates='collector',
+                                  lazy='dynamic',
                                   cascade='all')
     watcheds = db.relationship('Watch',
-
                                back_populates='watcher',
+                               lazy='dynamic',
                                cascade='all')
     followings = db.relationship('Follow',
                                  foreign_keys=[Follow.follower_id],
@@ -226,13 +227,14 @@ class User(db.Model):
 
         result["bio"] = self.bio
         result["likeds"] = len(self.likeds)
-        result["watcheds"] = len(self.watcheds)
+        result["watcheds"] = len(self.watcheds.all())
         result["followings"] = len(self.followings.all())
         result["followers"] = len(self.followers.all())
         result["posts"] = len(self.posts)
         result["domains"] = len(self.domains)
         result["comments"] = len(self.comments)
         result["certifieds"] = len(self.certifieds.all())
+        result["collections"] = len(self.collections.all())
         result["rootCertified"] = self.root_certified
 
         return result
@@ -500,6 +502,9 @@ class Domain(db.Model):
         result["description"] = ""
 
         if user is not None:
+            result["watched"] = False
+            if user.watcheds.filter_by(watched_id=self.id).first() is not None:
+                result["watched"] = True
             result['certified'] = False
             if user.certifieds.filter_by(
                     certified_id=self.id).first() is not None:

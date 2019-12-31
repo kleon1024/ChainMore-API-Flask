@@ -20,13 +20,20 @@ def admin():
     admin = User(nickname='柯力卬Kleon',
                  username='kleon',
                  email='1995dingli@gmail.com',
-                 root_certified=True,
+                 root_certified=False,
                  bio='阡陌 - 连接更多')
 
     admin.set_password('hellokleon')
     db.session.add(admin)
     db.session.commit()
 
+
+def admin_clear_root_certification():
+    admin = User.query.filter_by(username='kleon').first()
+    admin.root_certified = False
+    root = Domain.query.filter_by(title="阡陌").first()
+    root.uncertify(admin)
+    db.session.commit()
 
 def root_domain():
     admin = User.query.filter_by(username='kleon').first()
