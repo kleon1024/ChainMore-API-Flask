@@ -23,9 +23,9 @@ class UserInstance(Resource):
     @jwt_required
     def get(self, username):
         user = User.query.filter_by(username=username).first_or_404()
-        user = user.serialize()
-        user["following"] = current_user.is_following(user)
-        return response("OK", user=user)
+        res = user.serialize()
+        res["following"] = current_user.is_following(user)
+        return response("OK", user=res)
 
 class UserFollow(Resource):
     @jwt_required

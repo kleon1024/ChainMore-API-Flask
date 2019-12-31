@@ -57,17 +57,29 @@ class PostTrendings(Resource):
         posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
 
-
-class Posts(Resource):
+class PostUnsign(Resource):
     def get(self):
-        id = request.args.get('id', '').strip()
         try:
-            id = int(id)
+            id = int(request.args.get('id', '').strip())
         except:
             return response("BAD_REQUEST")
 
         post = Post.query.get_or_404(id)
-        return response("OK", item=post.serialize(level=0))
+        post = post.serialize(level=0)
+        return response("OK", item=post)
+
+class Posts(Resource):
+    @jwt_required
+    def get(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
+
+        post = Post.query.get_or_404(id)
+        res = post.serialize(level=0)
+        res["collected"] = current_user.is_collecting(post)
+        return response("OK", item=res)
 
     @jwt_required
     def post(self):
@@ -133,9 +145,8 @@ class PostComment(Resource):
 class PostComments(Resource):
     @jwt_required
     def post(self):
-        id = request.args.get('id', '').strip()
         try:
-            id = int(id)
+            id = int(request.args.get('id', '').strip())
         except:
             return response("BAD_REQUEST")
 
@@ -170,12 +181,20 @@ class PostComments(Resource):
 class PostLike(Resource):
     @jwt_required
     def post(self, id):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         post = Post.query.get_or_404(id)
         current_user.like(post)
         return response("OK", msg="Liked")
 
     @jwt_required
     def delete(self, id):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         post = Post.query.get_or_404(id)
         current_user.unlike(post)
         return response("OK", msg="Unliked")
@@ -183,13 +202,21 @@ class PostLike(Resource):
 
 class PostCollect(Resource):
     @jwt_required
-    def post(self, id):
+    def post(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         post = Post.query.get_or_404(id)
         current_user.collect(post)
         return response("OK", msg="Collected")
 
     @jwt_required
-    def delete(self, id):
+    def delete(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         post = Post.query.get_or_404(id)
         current_user.uncollect(post)
         return response("OK", msg="Uncollected")
@@ -199,6 +226,7 @@ api.add_resource(PostInstance, '/<int:id>')
 api.add_resource(PostComment, '/<int:id>/comment')
 api.add_resource(PostComments, '/comment')
 api.add_resource(PostLike, '/<int:id>/like')
-api.add_resource(PostCollect, '/<int:id>/collect')
+api.add_resource(PostCollect, '/collect')
 api.add_resource(Posts, '')
+api.add_resource(PostUnsign, '/unsign')
 api.add_resource(PostTrendings, '/trendings')
