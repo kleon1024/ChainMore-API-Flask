@@ -77,7 +77,7 @@ class Posts(Resource):
             return response("BAD_REQUEST")
 
         post = Post.query.get_or_404(id)
-        res = post.serialize(level=0)
+        res = post.serialize(level=0, user=current_user)
         res["collected"] = current_user.is_collecting(post)
         return response("OK", item=res)
 
@@ -178,28 +178,6 @@ class PostComments(Resource):
         return response("OK", items=comments)
 
 
-class PostLike(Resource):
-    @jwt_required
-    def post(self, id):
-        try:
-            id = int(request.args.get('id', '').strip())
-        except:
-            return response("BAD_REQUEST")
-        post = Post.query.get_or_404(id)
-        current_user.like(post)
-        return response("OK", msg="Liked")
-
-    @jwt_required
-    def delete(self, id):
-        try:
-            id = int(request.args.get('id', '').strip())
-        except:
-            return response("BAD_REQUEST")
-        post = Post.query.get_or_404(id)
-        current_user.unlike(post)
-        return response("OK", msg="Unliked")
-
-
 class PostCollect(Resource):
     @jwt_required
     def post(self):
@@ -225,7 +203,6 @@ class PostCollect(Resource):
 api.add_resource(PostInstance, '/<int:id>')
 api.add_resource(PostComment, '/<int:id>/comment')
 api.add_resource(PostComments, '/comment')
-api.add_resource(PostLike, '/<int:id>/like')
 api.add_resource(PostCollect, '/collect')
 api.add_resource(Posts, '')
 api.add_resource(PostUnsign, '/unsign')

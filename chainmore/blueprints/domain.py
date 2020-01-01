@@ -168,9 +168,8 @@ class DomainCerification(Resource):
 
     @jwt_required
     def delete(self):
-        id = request.args.get('id', '').strip()
         try:
-            id = int(id)
+            id = int(request.args.get('id', '').strip())
         except:
             return response("BAD_REQUEST")
 
@@ -190,6 +189,17 @@ class DomainHot(Resource):
         ]
         return response("OK", items=domains)
 
+class DomainAggregate(Resource):
+    def get(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
+
+        domain = Domain.query.get_or_404(id)
+        aggregate = domain.aggregate_structures()
+        return response("OK", aggregate=aggregate)
+
 
 api.add_resource(DomainInstance, '/unsign')
 api.add_resource(Domains, '')
@@ -197,3 +207,4 @@ api.add_resource(DomainWatch, '/watch')
 api.add_resource(DomainPost, '/post')
 api.add_resource(DomainCerification, '/certify')
 api.add_resource(DomainHot, '/hot')
+api.add_resource(DomainAggregate, '/aggregate')

@@ -488,6 +488,61 @@ class Domain(db.Model):
             domains.extend(agg.aggregated.subdomains())
         return domains
 
+    def aggregate_structures(self):
+        def subdomains(domain):
+            ret = {
+                "domain" : domain.serialize(level=1),
+                "subdomains" : [],
+                "expanded" : False,
+            }
+            for agg in domain.aggregateds.all():
+                ret["subdomains"].append(subdomains(agg.aggregated))
+            return ret
+
+        def supdomains(domain):
+            supdomain = domain["domain"].aggregators.first()
+            domain["domain"] = domain["domain"].serialize(level=1)
+            if supdomain is None:
+                return domain
+            ret = {
+                "domain" : supdomain.aggregator,
+                "subdomains" : [domain],
+                "expanded" : True,
+            }
+            return supdomains(ret)
+
+        subdomain = subdomains(self)
+        subdomain["domain"] = self
+        supdomain = supdomains(subdomain)
+        return supdomain
+
+    def dependent_structures(self):
+        def subdomains(domain):
+            ret = {
+                "domain" : domain.serialize(level=1),
+                "subdomains" : [],
+                "expanded" : False,
+            }
+            for dep in domain.dependants.all():
+                ret["subdomains"].append(subdomains(dep.dependant))
+            return ret
+
+        def supdomains(domain):
+            supdomain = domain["domain"].dependeds.first()
+            domain["domain"] = domain["domain"].serialize(level=1)
+            if supdomain is None:
+                return domain
+            ret = {
+                "domain" : supdomain.depended,
+                "subdomains" : [domain],
+                "expanded" : True,
+            }
+            return supdomains(ret)
+
+        subdomain = subdomains(self)
+        subdomain["domain"] = self
+        supdomain = supdomains(subdomain)
+        return supdomain
 
     def serialize(self, level=0, user=None):
         result = {}
@@ -520,19 +575,19 @@ class Domain(db.Model):
 
         if level >= 1: return result
 
-        result["aggregators"] = [
-            a.aggregator.serialize(level=1) for a in self.aggregators.paginate(1, 1).items
-        ]
-        result["aggregateds"] = [
-            a.aggregated.serialize(level=1) for a in self.aggregateds.paginate(1, 3).items
-        ]
+        # result["aggregators"] = [
+        #     a.aggregator.serialize(level=1) for a in self.aggregators.paginate(1, 1).items
+        # ]
+        # result["aggregateds"] = [
+        #     a.aggregated.serialize(level=1) for a in self.aggregateds.paginate(1, 3).items
+        # ]
 
-        result["dependeds"] = [
-            d.depended.serialize(level=1) for d in self.dependeds.paginate(1, 1).items
-        ]
-        result["dependants"] = [
-            d.dependant.serialize(level=1) for d in self.dependants.paginate(1, 3).items
-        ]
+        # result["dependeds"] = [
+        #     d.depended.serialize(level=1) for d in self.dependeds.paginate(1, 1).items
+        # ]
+        # result["dependants"] = [
+        #     d.dependant.serialize(level=1) for d in self.dependants.paginate(1, 3).items
+        # ]
 
         result["description"] = self.description
 
@@ -620,34 +675,29 @@ class Sparkle(db.Model):
 
     likers = db.relationship('Like', back_populates='liked', cascade='all')
 
-    like_count = db.Column(db.Integer)
-
     def serialize(self, level=0):
         result = {}
 
         result["id"] = self.id
         result["body"] = self.body
+        result["votes"] = self.replies.filter_by(deleted=0).count()
+        result["deleted"] = self.deleted == 1
         result["timestamp"] = self.timestamp
         result["author"] = self.author.serialize(level=1)
-        result["replied"] = self.replied.id  if self.replied else None
-        if level == 2:
+
+        if level == 1:
+            result["replied"] = None
+        elif level == 0:
+            result["replied"] = self.replied.serialize(level=1) if self.replied else None
+        
+        if level == 1:
             result["replies"] = []
-        elif level == 1:
+        elif level == 0:
             result["replies"] = [
-                reply.serialize(level=2)
-                for reply in self.replies.all()
+                reply.serialize(level=1)
+                for reply in self.replies.order_by(Sparkle.timestamp.desc()).paginate(1, 3).items
             ]
-            result["replies"] = result["replies"][0] if len(
-                result["replies"]) else result["replies"]
-        else:
-            result["replies"] = [
-                reply.serialize(level=0) for reply in self.replies.order_by(
-                    self.timestamp.desc()).all()
-            ]
-        result["votes"] = len(self.likers)
-
         return result
-
 
 @whooshee.register_model('title', 'description')
 class Post(db.Model):
@@ -682,7 +732,7 @@ class Post(db.Model):
             db.session.remove(category)
             db.session.commit()
 
-    def serialize(self, level=0):
+    def serialize(self, level=0, user=None):
 
         description_dict = self.description if level==0 else \
             self.description[:45].replace('\n', '')
@@ -696,7 +746,7 @@ class Post(db.Model):
             "author": self.author.serialize(level=1),
             "categories":
             [category.serialize() for category in self.classifiers],
-            "domain": self.domain.serialize(level=1),
+            "domain": self.domain.serialize(level=1, user=user),
             "comments": len(self.comments),
             "collects": len(self.collectors),
         }

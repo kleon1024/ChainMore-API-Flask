@@ -18,7 +18,7 @@ api = Api(sparkle_bp)
 class SparkleInstance(Resource):
     def get(self, id):
         sparkle = Sparkle.query.get_or_404(id)
-        return response("OK", item=sparkle.serialize(level=0))
+        return response("OK", item=sparkle.serialize())
 
     @jwt_required
     def put(self, id):
@@ -52,19 +52,19 @@ class SparkleTrendings(Resource):
             return response("BAD_REQUEST")
         sparkles = Sparkle.query.filter_by(deleted=0).order_by(
             Sparkle.timestamp.desc()).paginate(offset, limit).items
-        sparkles = [sparkle.serialize(level=1) for sparkle in sparkles]
+        sparkles = [sparkle.serialize() for sparkle in sparkles]
         return response("OK", items=sparkles)
 
 
 class Sparkles(Resource):
     def get(self):
         try:
-            id = int(request.args.get('id', ''))
+            id = int(request.args.get('id', '').strip())
         except:
             return response("BAD_REQUEST")
 
         sparkle = Sparkle.query.get_or_404(id)
-        return response("OK", item=sparkle.serialize(level=0))
+        return response("OK", item=sparkle.serialize())
 
     @jwt_required
     def post(self):
@@ -104,7 +104,7 @@ class SparkleComment(Resource):
         sparkle = Sparkle.query.get_or_404(id)
         comments = Sparkle.query.with_parent(sparkle).order_by(
             Sparkle.timestamp.desc()).all()
-        comments = [comment.serialize(level=0) for comment in comments]
+        comments = [comment.serialize(level=1) for comment in comments]
 
         return response("OK", items=comments)
 
@@ -112,22 +112,18 @@ class SparkleComment(Resource):
 class SparkleComments(Resource):
     @jwt_required
     def post(self):
-        id = request.args.get('id', '').strip()
-        try:
-            id = int(id)
-        except:
-            return response("BAD_REQUEST")
-
         data = request.get_json()
         if data is None:
             return response("EMPTY_BODY", msg="Empty Body")
         body = data.get("body", None)
-        
-        replied_id = data.get("reply", None)
-        if replied_id is None:
-            sparkle = Sparkle.query.get_or_404(id)
-        else:
-            sparkle = Sparkle.query.get_or_404(int(replied_id))
+        if body is None:
+            return response("EMPTY_BODY", msg="Empty Body")
+        try:
+            replied_id = int(data.get("reply", None))
+        except:
+            return response("BAD_REQUEST")
+
+        sparkle = Sparkle.query.get_or_404(replied_id)
 
         comment = Sparkle(body=body, author=current_user, replied=sparkle)
         db.session.add(comment)
@@ -136,51 +132,45 @@ class SparkleComments(Resource):
         return response("OK", item=comment.serialize())
 
     def get(self):
-        id = request.args.get('id', '').strip()
         try:
-            id = int(id)
+            id = int(request.args.get('id', '').strip())
+            offset = int(request.args.get('offset', 1))
+            limit = int(request.args.get('limit', 20))
         except:
             return response("BAD_REQUEST")
         sparkle = Sparkle.query.get_or_404(id)
         comments = Sparkle.query.with_parent(sparkle).order_by(
-            Sparkle.timestamp.desc()).all()
-        comments = [comment.serialize(level=0) for comment in comments]
+            Sparkle.timestamp.desc()).paginate(offset, limit).items
+        comments = [comment.serialize(level=1) for comment in comments]
 
         return response("OK", items=comments)
 
 
 class SparkleLike(Resource):
     @jwt_required
-    def post(self, id):
+    def post(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         sparkle = Sparkle.query.get_or_404(id)
         current_user.like(sparkle)
         return response("OK", msg="Liked")
 
     @jwt_required
-    def delete(self, id):
+    def delete(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
         sparkle = Sparkle.query.get_or_404(id)
         current_user.unlike(sparkle)
         return response("OK", msg="Unliked")
 
 
-class SparkleCollect(Resource):
-    @jwt_required
-    def post(self, id):
-        sparkle = Sparkle.query.get_or_404(id)
-        current_user.collect(sparkle)
-        return response("OK", msg="Collected")
-
-    @jwt_required
-    def delete(self, id):
-        sparkle = Sparkle.query.get_or_404(id)
-        current_user.uncollect(sparkle)
-        return response("OK", msg="Uncollected")
-
-
 api.add_resource(SparkleInstance, '/<int:id>')
 api.add_resource(SparkleComment, '/<int:id>/comment')
-api.add_resource(SparkleComments, '/comment')
-api.add_resource(SparkleLike, '/<int:id>/like')
-api.add_resource(SparkleCollect, '/<int:id>/collect')
+api.add_resource(SparkleComments, '/reply')
+api.add_resource(SparkleLike, '/like')
 api.add_resource(Sparkles, '')
 api.add_resource(SparkleTrendings, '/trendings')
