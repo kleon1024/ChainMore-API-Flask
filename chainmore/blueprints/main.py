@@ -3,12 +3,13 @@
     :author: Kleon
     :url: https://github.com/kleon1024
 """
-from flask import Blueprint, request
+from flask import Blueprint, request, app, current_app, send_from_directory
 from flask_restful import Api, Resource
 from flask_jwt_extended import (jwt_required, current_user)
 
 from ..utils import (response)
 from ..models import (User, Domain, Post)
+import os
 
 main_bp = Blueprint('main', __name__)
 api = Api(main_bp)
@@ -64,7 +65,26 @@ class DomainSearch(Resource):
         ]
         return response("OK", items=domains)
 
+class Update(Resource):
+    def get(self):
+        version = {}
+        version["appStoreUrl"] = ""
+        version["apkUrl"] = "http://192.168.3.5:5000/v1/download/apk/chainmore_1.0.1_20200103081017.apk"
+        version["version"] = "1.0.1"
+        version["content"] = "船新版本"
+
+        return response("OK", item=version)
+
+class Download(Resource):
+    def get(self, filename):
+        head, tail = os.path.split(filename)
+        path = os.path.join(current_app.root_path, head)
+        print(head)
+        print(tail)
+        return send_from_directory(path, filename=tail, as_attachment=True)
 
 api.add_resource(Search, '/search')
 api.add_resource(HotSearch, '/search/hot')
 api.add_resource(DomainSearch, '/search/domain')
+api.add_resource(Update, '/update')
+api.add_resource(Download, '/download/<path:filename>')

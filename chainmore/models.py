@@ -688,15 +688,10 @@ class Sparkle(db.Model):
         if level == 1:
             result["replied"] = None
         elif level == 0:
-            result["replied"] = self.replied.serialize(level=1) if self.replied else None
+            result["replied"] = self.replied.serialize(level=0) if self.replied else None
         
-        if level == 1:
-            result["replies"] = []
-        elif level == 0:
-            result["replies"] = [
-                reply.serialize(level=1)
-                for reply in self.replies.order_by(Sparkle.timestamp.desc()).paginate(1, 3).items
-            ]
+        result["replies"] = [reply.serialize(level=1) for reply in self.replies.order_by(
+            Sparkle.timestamp.desc()).paginate(1, 3).items]
         return result
 
 @whooshee.register_model('title', 'description')
