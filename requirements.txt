@@ -1,5 +1,13 @@
+# Environment 
+gunicorn
+yapf
+flake8
+
+# Testing
 faker
 watchdog
+
+# Development
 flask-sqlalchemy
 flask-login
 flask-dropzone
@@ -14,6 +22,4 @@ flask-whooshee
 flask-avatars
 flask-jwt-extended
 flask-restful
-flake8
-yapf
 flask-migrate
