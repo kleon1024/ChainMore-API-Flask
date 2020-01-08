@@ -26,8 +26,7 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-# access_token_expire_time = datetime.timedelta(minutes=30)
-access_token_expire_time = datetime.timedelta(seconds=10)
+access_token_expire_time = datetime.timedelta(minutes=15)
 refresh_token_expire_time = datetime.timedelta(days=30)
 
 
