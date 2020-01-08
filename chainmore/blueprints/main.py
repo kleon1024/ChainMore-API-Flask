@@ -78,9 +78,7 @@ class Update(Resource):
 class Download(Resource):
     def get(self, filename):
         head, tail = os.path.split(filename)
-        path = os.path.join(current_app.root_path, head)
-        print(head)
-        print(tail)
+        path = os.path.join(current_app.config.get('APK_URL', current_app.root_path), head)
         return send_from_directory(path, filename=tail, as_attachment=True)
 
 api.add_resource(Search, '/search')
