@@ -69,8 +69,8 @@ class Update(Resource):
     def get(self):
         version = {}
         version["appStoreUrl"] = ""
-        version["apkUrl"] = "http://192.168.3.5:5000/v1/download/apk/chainmore_1.0.1_20200103081017.apk"
-        version["version"] = "1.0.1"
+        version["apkUrl"] = "https://api.kleon.space/v1/download/apk/chainmore_1.0.2_20200108222741.apk"
+        version["version"] = "1.0.2"
         version["content"] = "船新版本"
 
         return response("OK", item=version)

@@ -26,7 +26,8 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-access_token_expire_time = datetime.timedelta(minutes=15)
+# access_token_expire_time = datetime.timedelta(minutes=30)
+access_token_expire_time = datetime.timedelta(seconds=10)
 refresh_token_expire_time = datetime.timedelta(days=30)
 
 
@@ -58,7 +59,7 @@ class SignUp(Resource):
             return response("USERNAME_EXIST", msg="Username Exist")
 
         if nickname == "":
-            nickname = "探索者" + username + str(int(time.time() % 10000000000))
+            nickname = "探索者" + username + str(int(time.time() % 1000000000))
         user = User(nickname=nickname,
                     email=email,
                     username=username,
