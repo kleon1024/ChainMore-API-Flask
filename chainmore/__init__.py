@@ -66,21 +66,19 @@ def register_commands(app):
     def init():
         """Initialize data"""
         click.echo('Initializing data...')
-        # db.drop_all()
-        # db.create_all()
+        db.drop_all()
+        db.create_all()
 
         from .initialize import (admin, root_domain, super_domain, admin_clear_root_certification)
 
-        # click.echo('Intializing categories')
-        # Category.init_category(['文章', '付费', '广告'])
-        # click.echo('Creating admin')
-        # admin()
-        # click.echo('Creating root domain')
-        # root_domain()
-        # click.echo('Creating super domains')
-        # super_domain()
-
-        admin_clear_root_certification()
+        click.echo('Intializing categories')
+        Category.init_category(['文章', '付费', '广告'])
+        click.echo('Creating admin')
+        admin()
+        click.echo('Creating root domain')
+        root_domain()
+        click.echo('Creating super domains')
+        super_domain()
 
         click.echo('Done')
 
