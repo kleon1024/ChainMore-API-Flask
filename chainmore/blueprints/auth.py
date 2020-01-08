@@ -26,7 +26,8 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-access_token_expire_time = datetime.timedelta(minutes=15)
+# access_token_expire_time = datetime.timedelta(minutes=15)
+access_token_expire_time = datetime.timedelta(seconds=10)
 refresh_token_expire_time = datetime.timedelta(days=30)
 
 
@@ -85,8 +86,8 @@ class SignIn(Resource):
 
         if user is not None and user.validate_password(password):
             username = user.username
-            access_token = create_access_token(identity=username)
-            refresh_token = create_refresh_token(identity=username)
+            access_token = create_access_token(identity=username, expires_delta=access_token_expire_time)
+            refresh_token = create_refresh_token(identity=username, expires_delta=refresh_token_expire_time)
             return response("OK",
                             msg="User Login As {}".format(username),
                             username=username,
