@@ -42,8 +42,9 @@ class Search(Resource):
 
 class HotSearch(Resource):
     def get(self):
-        domains = Domain.query.order_by(Domain.timestamp.desc()).all()
-        domains = domains[20] if len(domains) > 20 else domains
+        offset = int(request.args.get('offset', 1))
+        limit = int(request.args.get('limit', 10))
+        domains = Domain.query.order_by(Domain.timestamp.desc()).paginate(offset, limit).items
         domains = [domain.title for domain in domains]
         hot = {}
         hot["queries"] = domains
@@ -57,7 +58,7 @@ class DomainSearch(Resource):
         if q == '':
             return response("OK", items=[])
         offset = int(request.args.get('offset', 1))
-        limit = int(request.args.get('limit', 20))
+        limit = int(request.args.get('limit', 10))
 
         domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
         domains = [
