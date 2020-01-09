@@ -544,7 +544,7 @@ class Domain(db.Model):
         supdomain = supdomains(subdomain)
         return supdomain
 
-    def serialize(self, level=0, user=None):
+    def serialize(self, level=0, user=None, depended=False):
         result = {}
 
         result["id"] = self.id
@@ -555,6 +555,10 @@ class Domain(db.Model):
         result["bio"] = self.bio
         result["posts"] = len(self.posts.all())
         result["description"] = ""
+        if depended:
+            result["dependeds"] = [
+                d.depended.serialize(level=1) for d in self.dependeds.paginate(1, 1).items
+            ]
 
         if user is not None:
             result["watched"] = False
@@ -741,7 +745,7 @@ class Post(db.Model):
             "author": self.author.serialize(level=1),
             "categories":
             [category.serialize() for category in self.classifiers],
-            "domain": self.domain.serialize(level=1, user=user),
+            "domain": self.domain.serialize(level=1, user=user, depended=True),
             "comments": len(self.comments),
             "collects": len(self.collectors),
         }

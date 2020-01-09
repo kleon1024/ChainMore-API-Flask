@@ -62,7 +62,7 @@ class DomainSearch(Resource):
 
         domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
         domains = [
-            domain.serialize(level=1, user=current_user) for domain in domains
+            domain.serialize(level=1, user=current_user, depended=True) for domain in domains
         ]
         return response("OK", items=domains)
 

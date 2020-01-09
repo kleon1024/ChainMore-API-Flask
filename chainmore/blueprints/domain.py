@@ -186,7 +186,7 @@ class DomainHot(Resource):
         if len(domains) >= 10:
             domains = domains[0:9]
         domains = [
-            domain.serialize(level=1, user=current_user) for domain in domains
+            domain.serialize(level=1, user=current_user, depended=True) for domain in domains
         ]
         return response("OK", items=domains)
 
