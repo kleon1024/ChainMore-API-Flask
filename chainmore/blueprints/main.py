@@ -69,7 +69,7 @@ class Update(Resource):
     def get(self):
         version = {}
         version["appStoreUrl"] = ""
-        version["apkUrl"] = "http://api.kleon.space/v1/download/apk/chainmore_1.0.3_20200109081043.apk"
+        version["apkUrl"] = "https://cm-1301052396.cos.ap-shanghai.myqcloud.com/chainmore_1.0.3_20200109081043.apk"
         version["version"] = "1.0.3"
         version["content"] = "你没见过的船新版本:\n1.恢复注册页面昵称字段"
 
