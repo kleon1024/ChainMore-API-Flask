@@ -164,6 +164,7 @@ class DomainCerification(Resource):
         domain.certify(current_user)
         if (domain.id == 1):
             current_user.root_certified = True
+            db.session.commit()        
         return response("OK", msg="Certified")
 
     @jwt_required
