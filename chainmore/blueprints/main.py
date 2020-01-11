@@ -70,9 +70,9 @@ class Update(Resource):
     def get(self):
         version = {}
         version["appStoreUrl"] = ""
-        version["apkUrl"] = "https://cm-1301052396.cos.ap-shanghai.myqcloud.com/chainmore_1.0.4_20200109204900.apk"
-        version["version"] = "1.0.4"
-        version["content"] = "你没见过的船新版本:\n1.主页面启动时检查剪贴板\n2.增加底部提示\n3.增加前置领域认证\n4.认证领域后刷新热门领域\n5.修复若干显示错误"
+        version["apkUrl"] = "https://cm-1301052396.cos.ap-shanghai.myqcloud.com/chainmore_1.0.5_20200111225251.apk"
+        version["version"] = "1.0.5"
+        version["content"] = "全新升级:\n1.Android WebView升级\n2.改进视图\n3.修复若干bug"
 
         return response("OK", item=version)
 
