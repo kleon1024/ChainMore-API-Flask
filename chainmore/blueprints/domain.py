@@ -191,6 +191,7 @@ class DomainHot(Resource):
         return response("OK", items=domains)
 
 class DomainAggregate(Resource):
+    @jwt_required
     def get(self):
         try:
             id = int(request.args.get('id', '').strip())
@@ -201,6 +202,18 @@ class DomainAggregate(Resource):
         aggregate = domain.aggregate_structures()
         return response("OK", aggregate=aggregate)
 
+class DomainDependent(Resource):
+    @jwt_required
+    def get(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
+
+        domain = Domain.query.get_or_404(id)
+        dependent = domain.dependent_structures()
+        return response("OK", dependent=dependent)
+
 
 api.add_resource(DomainInstance, '/unsign')
 api.add_resource(Domains, '')
@@ -209,3 +222,4 @@ api.add_resource(DomainPost, '/post')
 api.add_resource(DomainCerification, '/certify')
 api.add_resource(DomainHot, '/hot')
 api.add_resource(DomainAggregate, '/aggregate')
+api.add_resource(DomainDependent, '/dependent')

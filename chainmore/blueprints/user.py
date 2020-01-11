@@ -3,7 +3,7 @@
     :author: Kleon
     :url: https://github.com/kleon1024
 """
-from flask import Blueprint
+from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
@@ -31,7 +31,7 @@ class UserFollow(Resource):
     @jwt_required
     def post(self):
         try:
-            username = request.args.get('username', '').strip()
+            username = request.args.get('username', '')
         except:
             return response("BAD_REQUEST")
         user = User.query.filter_by(username=username).first_or_404()

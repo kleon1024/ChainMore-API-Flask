@@ -524,6 +524,7 @@ class Domain(db.Model):
                 "expanded" : False,
             }
             for dep in domain.dependants.all():
+                print(dep)
                 ret["subdomains"].append(subdomains(dep.dependant))
             return ret
 
@@ -540,6 +541,7 @@ class Domain(db.Model):
             return supdomains(ret)
 
         subdomain = subdomains(self)
+        print(subdomain)
         subdomain["domain"] = self
         supdomain = supdomains(subdomain)
         return supdomain
