@@ -82,10 +82,40 @@ class Posts(Resource):
         return response("OK", item=res)
 
     @jwt_required
+    def put(self):
+        data = request.get_json()
+        if data is None:
+            return response("BAD_REQUEST")
+        try:
+            post = Post.query.get_or_404(int(data["id"]))
+        except:
+            return response("BAD_REQUEST")
+
+        if post.author.id != current_user.id:
+            return response("UNAUTHORIZED")
+
+        title = data.get("title", None)
+        url = data.get("url", None)
+        description = data.get("description", None)
+        categories = data.get("categories", None)
+        
+        if title != None:
+            post.title = title
+        if url != None:
+            post.url = url
+        if description != None:
+            post.description = description
+        db.session.commit()
+        if categories != None:
+            post.add_categories(categories)
+        db.session.commit()
+        return response("OK", msg="Resource putted")
+              
+    @jwt_required
     def post(self):
         data = request.get_json()
         if data is None:
-            return response("OK", )
+            return response("BAD_REQUEST")
         try:
             domain = int(data.get("domain", None))
         except:
@@ -107,9 +137,7 @@ class Posts(Resource):
                     url=url,
                     author_id=current_user.id,
                     domain=domain)
-        for category in categories:
-            c = Category.query.get_or_404(category)
-            post.add_category(c)
+        post.add_categories(categories)
         db.session.add(post)
         db.session.commit()
 

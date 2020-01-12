@@ -711,6 +711,7 @@ class Post(db.Model):
 
     classifiers = db.relationship('Classify',
                                   back_populates='classified',
+                                  lazy='dynamic',
                                   cascade='all')
     author = db.relationship('User', back_populates='posts')
     comments = db.relationship('Comment', back_populates='post', cascade='all')
@@ -719,17 +720,26 @@ class Post(db.Model):
                                  cascade='all')
     domain = db.relationship('Domain', back_populates='posts')
 
-    def add_category(self, category):
-        if self.classifiers.query.with_parent(self).filter_by(category.id).first() is not None:
-            classify = Classify(classifier=category, classified=self)
-            db.session.add(classify)
-            db.session.commit()
+    def add_categories(self, categories):
+        for classifier in self.classifiers.all():
+            if classifier.classifier_id not in categories:
+                db.session.delete(classifier)
+        for category_id in categories:
+            category = Category.query.get_or_404(category_id)
+            if not self.has_category(category):
+                classify = Classify(classifier=category, classified=self)
+                db.session.add(classify)
 
     def remove_category(self, category):
-        category = self.classifiers.query.with_parent(self).filter_by(category.id).first()
-        if category:
-            db.session.remove(category)
+        classifier = self.classifiers.with_parent(self).filter_by(
+            classifier_id=category.id).first()
+        if classifier:
+            db.session.delete(classifier)
             db.session.commit()
+    
+    def has_category(self, category):
+        return self.classifiers.with_parent(self).filter_by(
+            classifier_id=category.id).first() is not None
 
     def serialize(self, level=0, user=None):
 
@@ -744,7 +754,7 @@ class Post(db.Model):
             "timestamp": self.timestamp,
             "author": self.author.serialize(level=1),
             "categories":
-            [category.serialize() for category in self.classifiers],
+            [classifier.classifier.serialize() for classifier in self.classifiers],
             "domain": self.domain.serialize(level=1, user=user, depended=True),
             "comments": len(self.comments),
             "collects": len(self.collectors),

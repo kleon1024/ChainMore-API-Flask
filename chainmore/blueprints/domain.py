@@ -108,7 +108,7 @@ class DomainPost(Resource):
         try:
             id = int(request.args.get('id', '').strip())
             offset = int(request.args.get('offset', 1))
-            limit = int(request.args.get('limit', 20))
+            limit = int(request.args.get('limit', 5))
         except:
             return response("BAD_REQUEST")
         domain = Domain.query.get_or_404(id)
