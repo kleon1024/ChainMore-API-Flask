@@ -30,6 +30,50 @@ class Category(db.Model):
         result["category"] = self.category
         return result
 
+class Emoji(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    emoji = db.Column(db.String(10), unique=True)
+    emoji_replies = db.relationship('EmojiReply',
+                                    back_populates='emoji',
+                                    lazy='dynamic',
+                                    cascade='all')
+
+    @staticmethod
+    def init_emoji(emojis):
+        for emoji in emojis:
+            e = Emoji(emoji=emoji)
+            db.session.add(e)
+        db.session.commit()
+    
+    def serialize(self):
+        result = {}
+        result["id"] = self.id
+        result["emoji"] = self.emoji
+        return result
+
+class EmojiReply(db.Model):
+    user_id = db.Column(db.Integer, 
+                        db.ForeignKey('user.id'),
+                        primary_key=True)
+    post_id = db.Column(db.Integer,
+                        db.ForeignKey('post.id'),
+                        primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    emoji_id = db.Column(db.Integer,
+                        db.ForeignKey('emoji.id'),
+                        primary_key=True)
+    emoji = db.relationship('Emoji',
+                            foreign_keys=[emoji_id],
+                            back_populates='emoji_replies',
+                            lazy='joined')
+    user = db.relationship('User',
+                            foreign_keys=[user_id],
+                            back_populates='emoji_replies',
+                            lazy='joined')
+    post = db.relationship('Post',
+                            foreign_keys=[post_id],
+                            back_populates='emoji_repliers',
+                            lazy='joined')
 
 class Classify(db.Model):
     classified_id = db.Column(db.Integer,
@@ -188,6 +232,10 @@ class User(db.Model):
     root_certified = db.Column(db.Boolean)
 
     posts = db.relationship('Post', back_populates='author', cascade='all')
+    emoji_replies = db.relationship('EmojiReply',
+                    back_populates='user',
+                    lazy='dynamic',
+                    cascade='all')
     domains = db.relationship('Domain',
                               back_populates='creator',
                               cascade='all')
@@ -339,6 +387,26 @@ class User(db.Model):
         return Watch.query.with_parent(self).filter_by(
             watched_id=post.id).first() is not None
 
+    def add_emoji_reply(self, post, emoji):
+        if not self.is_emoji_replied(post, emoji):
+            reply = EmojiReply(
+                user = self, post = post, emoji = emoji
+            )
+            db.session.add(reply)
+            db.session.commit()
+
+    def delete_emoji_reply(self, post, emoji):
+        emoji_reply = EmojiReply.query.with_parent(self).filter(
+            EmojiReply.post_id==post.id,
+            EmojiReply.emoji_id==emoji.id).first()
+        if emoji_reply:
+            db.session.delete(emoji_reply)
+            db.session.commit()
+        
+    def is_emoji_replied(self, post, emoji):
+        return EmojiReply.query.with_parent(self).filter(
+            EmojiReply.post_id==post.id,
+            EmojiReply.emoji_id==emoji.id).first() is not None
 
 class Choice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -679,6 +747,7 @@ class Sparkle(db.Model):
                               remote_side=[id])
 
     likers = db.relationship('Like', back_populates='liked', cascade='all')
+    like_count = db.Column(db.Integer)
 
     def serialize(self, level=0):
         result = {}
@@ -714,6 +783,10 @@ class Post(db.Model):
                                   back_populates='classified',
                                   lazy='dynamic',
                                   cascade='all')
+    emoji_repliers = db.relationship('EmojiReply',
+                              back_populates='post',
+                              lazy='dynamic',
+                              cascade='all')
     author = db.relationship('User', back_populates='posts')
     comments = db.relationship('Comment', back_populates='post', cascade='all')
     collectors = db.relationship('Collect',
@@ -747,6 +820,14 @@ class Post(db.Model):
         description_dict = self.description if level==0 else \
             self.description[:45].replace('\n', '')
 
+        emojis = []
+        for index in range(Emoji.query.count()):
+            emoji_id = index + 1
+            emoji = Emoji.query.get(emoji_id).serialize()
+            emoji["count"] = self.emoji_repliers.with_parent(self).filter_by(
+                emoji_id=emoji_id).count()
+            emojis.append(emoji)
+
         return {
             "id": self.id,
             "title": self.title,
@@ -756,6 +837,7 @@ class Post(db.Model):
             "author": self.author.serialize(level=1),
             "categories":
             [classifier.classifier.serialize() for classifier in self.classifiers],
+            "emojis": emojis,
             "domain": self.domain.serialize(level=1, user=user, depended=True),
             "comments": len(self.comments),
             "collects": len(self.collectors),

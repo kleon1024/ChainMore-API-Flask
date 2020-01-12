@@ -18,7 +18,7 @@ from .blueprints.user import user_bp
 from .blueprints.main import main_bp
 from .extensions import db, jwt, whooshee
 from .settings import config
-from .models import (Category)
+from .models import (Category, Emoji)
 from flask_migrate import Migrate
 
 
@@ -66,19 +66,20 @@ def register_commands(app):
     def init():
         """Initialize data"""
         click.echo('Initializing data...')
-        db.drop_all()
-        db.create_all()
+        # db.drop_all()
+        # db.create_all()
 
         from .initialize import (admin, root_domain, super_domain, admin_clear_root_certification)
 
-        click.echo('Intializing categories')
-        Category.init_category(['文章', '付费', '广告'])
-        click.echo('Creating admin')
-        admin()
-        click.echo('Creating root domain')
-        root_domain()
-        click.echo('Creating super domains')
-        super_domain()
+        # click.echo('Intializing categories')
+        # Category.init_category(['文章', '付费', '广告'])
+        # click.echo('Creating admin')
+        # admin()
+        # click.echo('Creating root domain')
+        # root_domain()
+        # click.echo('Creating super domains')
+        # super_domain()
+        Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
 
         click.echo('Done')
 

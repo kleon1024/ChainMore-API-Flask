@@ -48,7 +48,26 @@ class UserFollow(Resource):
         current_user.unfollow(user)
         return response("OK", msg="Unfollowed")
 
+class EmojiReply(Resource):
+    @jwt_required
+    def post(self):
+        try:
+            post = Post.query.get_or_404(request.args['post'])
+            emoji = Emoji.query.get_or_404(request.args['emoji'])
+        except:
+            return response("BAD_REQUEST")
+        current_user.add_emoji_reply(post, emoji)
+
+    @jwt_required
+    def delete(self):
+        try:
+            post = Post.query.get_or_404(request.args['post'])
+            emoji = Emoji.query.get_or_404(request.args['emoji'])
+        except:
+            return response("BAD_REQUEST")
+        current_user.delete_emoji_reply(post, emoji)            
 
 api.add_resource(UserInstance, '/<username>')
 api.add_resource(UserInstanceUnsign, '/unsign/<username>')
 api.add_resource(UserFollow, '/follow')
+api.add_resource(EmojiReply, '/emoji')

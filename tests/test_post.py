@@ -45,3 +45,54 @@ class PostTestCase(BaseTestCase):
             categories = [2]
         ))
         self.OK(response)
+
+    def test_add_emoji_reply(self):
+        self.login()
+        self.post('/v1/post', json=dict(
+            title = "测试",
+            domain = 1,
+            url = "https://google.com",
+            description = "测试文本",
+            categories = [1]
+        ))
+        response = self.post('/v1/post/emoji', query_string=dict(
+            post = 1,
+            emoji = 1
+        ))
+        self.OK(response)
+        response = self.get('/v1/post', query_string=dict(
+            id = 1
+        ))
+        response = response.get_json()
+        emojis = response["item"]["emojis"]
+        self.assertEqual(len(emojis), 6)
+        for emoji in emojis:
+            if emoji["id"] == 1: self.assertEqual(emoji["count"], 1)
+            else: self.assertEqual(emoji["count"], 0)
+
+    def test_delete_emoji_reply(self):
+        self.login()
+        self.post('/v1/post', json=dict(
+            title = "测试",
+            domain = 1,
+            url = "https://google.com",
+            description = "测试文本",
+            categories = [1]
+        ))
+        self.post('/v1/post/emoji', query_string=dict(
+            post = 1,
+            emoji = 1
+        ))
+        response = self.delete('/v1/post/emoji', query_string=dict(
+            post = 1,
+            emoji = 1
+        ))
+        self.OK(response)
+        response = self.get('/v1/post', query_string=dict(
+            id = 1
+        ))
+        response = response.get_json()
+        emojis = response["item"]["emojis"]
+        self.assertEqual(len(emojis), 6)
+        for emoji in emojis:
+            self.assertEqual(emoji["count"], 0)

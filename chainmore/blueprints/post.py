@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Post, Comment, Category, Domain)
+from ..models import (Post, Comment, Category, Domain, Emoji)
 from ..extensions import db
 
 post_bp = Blueprint('post', __name__)
@@ -50,7 +50,6 @@ class PostInstance(Resource):
         db.session.commit()
         return response("OK", msg="Post deleted")
 
-
 class PostTrendings(Resource):
     def get(self):
         try:
@@ -58,7 +57,8 @@ class PostTrendings(Resource):
             limit = int(request.args.get('limit', 5))
         except:
             return response("BAD_REQUEST")
-        posts = Post.query.order_by(Post.timestamp.desc()).paginate(offset, limit).items
+        posts = Post.query.order_by(
+            Post.timestamp.desc()).paginate(offset, limit).items
         posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
 
@@ -233,6 +233,30 @@ class PostCollect(Resource):
         return response("OK", msg="Uncollected")
 
 
+class EmojiReply(Resource):
+    @jwt_required
+    def post(self):
+        try:
+            post = request.args.get('post')
+            emoji = request.args.get('emoji')
+        except:
+            return response("BAD_REQUEST")
+        post = Post.query.get_or_404(post)
+        emoji = Emoji.query.get_or_404(emoji)
+        current_user.add_emoji_reply(post, emoji)
+        return response("OK")
+
+    @jwt_required
+    def delete(self):
+        try:
+            post = Post.query.get_or_404(request.args.get('post'))
+            emoji = Emoji.query.get_or_404(request.args.get('emoji'))
+        except:
+            return response("BAD_REQUEST")
+        current_user.delete_emoji_reply(post, emoji)
+        return response("OK")
+
+
 api.add_resource(PostInstance, '/<int:id>')
 api.add_resource(PostComment, '/<int:id>/comment')
 api.add_resource(PostComments, '/comment')
@@ -240,3 +264,4 @@ api.add_resource(PostCollect, '/collect')
 api.add_resource(Posts, '')
 api.add_resource(PostUnsign, '/unsign')
 api.add_resource(PostTrendings, '/trendings')
+api.add_resource(EmojiReply, '/emoji')

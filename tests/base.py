@@ -8,7 +8,7 @@ from flask_restful import Api
 
 from chainmore import create_app
 from chainmore.extensions import db
-from chainmore.models import User, Category
+from chainmore.models import User, Category, Emoji
 from chainmore.blueprints import auth
 
 from chainmore.initialize import (admin, root_domain, super_domain, admin_clear_root_certification)
@@ -29,6 +29,7 @@ class BaseTestCase(unittest.TestCase):
 
         db.create_all()
         Category.init_category(['文章', '付费', '广告'])
+        Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
         admin()
         root_domain()
         super_domain()
