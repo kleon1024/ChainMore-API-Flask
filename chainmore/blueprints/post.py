@@ -53,7 +53,12 @@ class PostInstance(Resource):
 
 class PostTrendings(Resource):
     def get(self):
-        posts = Post.query.order_by(Post.timestamp.desc()).all()
+        try:
+            offset = int(request.args.get('offset', 1))
+            limit = int(request.args.get('limit', 5))
+        except:
+            return response("BAD_REQUEST")
+        posts = Post.query.order_by(Post.timestamp.desc()).paginate(offset, limit).items
         posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
 

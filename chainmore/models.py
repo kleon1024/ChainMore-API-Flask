@@ -28,6 +28,7 @@ class Category(db.Model):
         result = {}
         result["id"] = self.id
         result["category"] = self.category
+        return result
 
 
 class Classify(db.Model):

@@ -47,7 +47,7 @@ class SparkleTrendings(Resource):
     def get(self):
         try:
             offset = int(request.args.get('offset', 1))
-            limit = int(request.args.get('limit', 20))
+            limit = int(request.args.get('limit', 5))
         except:
             return response("BAD_REQUEST")
         sparkles = Sparkle.query.filter_by(deleted=0).order_by(
