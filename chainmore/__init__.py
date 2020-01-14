@@ -8,6 +8,7 @@ import os
 import click
 
 from flask import Flask
+from collections import OrderedDict
 
 from .blueprints.auth import auth_bp
 from .blueprints.domain import domain_bp
@@ -79,7 +80,15 @@ def register_commands(app):
         # root_domain()
         # click.echo('Creating super domains')
         # super_domain()
-        Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
+        # Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
+        cg = OrderedDict()
+        cg["媒介"] = ["文章", "音频", "视频", "图片"]
+        cg["版权"] = ["搬运", "原创"]
+        cg["形式"] = ["提问", "经验", "记录", "教程", "范例"]
+        cg["价值"] = ["付费", "广告"]
+        Category.__table__.drop(db.engine)
+        Category.__table__.create(db.engine)
+        Category.init_category(cg)
 
         click.echo('Done')
 

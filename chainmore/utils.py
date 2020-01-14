@@ -18,7 +18,7 @@ def response(status="OK", **kwargs):
     if status == "OK":
         result["code"] = 20000
     elif status == "INVALID_AUTH":
-        result["code"] = 20001
+        abort(401)
     elif status == "EMPTY_BODY":
         result["code"] = 20002
     elif status == "EMAIL_EXIST":

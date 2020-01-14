@@ -7,6 +7,8 @@ from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
+from ..extensions import db
+
 from ..utils import (response)
 from ..models import (User)
 
@@ -26,6 +28,25 @@ class UserInstance(Resource):
         res = user.serialize()
         res["following"] = current_user.is_following(user)
         return response("OK", user=res)
+
+    @jwt_required
+    def post(self, username):
+        user = User.query.filter_by(username=username).first_or_404()
+        try:
+            data = request.get_json()
+            categories = data.get('categories', None)
+            nickname = data.get('nickname', None)
+            bio = data.get('bio', None)
+        except:
+            return response("BAD_REQUEST")
+        if categories is not None:
+            user.set_filtered_categories(categories)
+        if nickname is not None and nickname != "":
+            user.nickname = nickname
+        if bio is not None and bio != "":
+            user.bio = bio
+        db.session.commit()
+        return response("OK")
 
 class UserFollow(Resource):
     @jwt_required
@@ -48,26 +69,7 @@ class UserFollow(Resource):
         current_user.unfollow(user)
         return response("OK", msg="Unfollowed")
 
-class EmojiReply(Resource):
-    @jwt_required
-    def post(self):
-        try:
-            post = Post.query.get_or_404(request.args['post'])
-            emoji = Emoji.query.get_or_404(request.args['emoji'])
-        except:
-            return response("BAD_REQUEST")
-        current_user.add_emoji_reply(post, emoji)
-
-    @jwt_required
-    def delete(self):
-        try:
-            post = Post.query.get_or_404(request.args['post'])
-            emoji = Emoji.query.get_or_404(request.args['emoji'])
-        except:
-            return response("BAD_REQUEST")
-        current_user.delete_emoji_reply(post, emoji)            
-
+           
 api.add_resource(UserInstance, '/<username>')
 api.add_resource(UserInstanceUnsign, '/unsign/<username>')
 api.add_resource(UserFollow, '/follow')
-api.add_resource(EmojiReply, '/emoji')

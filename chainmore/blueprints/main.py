@@ -8,7 +8,7 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import (jwt_required, current_user)
 
 from ..utils import (response)
-from ..models import (User, Domain, Post)
+from ..models import (User, Domain, Post, CategoryGroup)
 import os
 
 main_bp = Blueprint('main', __name__)
@@ -82,8 +82,14 @@ class Download(Resource):
         path = os.path.join(current_app.config.get('APK_URL', current_app.root_path), head)
         return send_from_directory(path, filename=tail, as_attachment=True)
 
+class CategoryGroupResource(Resource):
+    def get(self):
+        category_groups = [category_group.serialize() for category_group in CategoryGroup.query.all()]
+        return response("OK", items=category_groups)
+
 api.add_resource(Search, '/search')
 api.add_resource(HotSearch, '/search/hot')
 api.add_resource(DomainSearch, '/search/domain')
 api.add_resource(Update, '/update')
 api.add_resource(Download, '/download/<path:filename>')
+api.add_resource(CategoryGroupResource, '/category_groups')

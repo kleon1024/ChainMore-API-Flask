@@ -92,7 +92,7 @@ class Posts(Resource):
         if data is None:
             return response("BAD_REQUEST")
         try:
-            post = Post.query.get_or_404(int(data["id"]))
+            post = Post.query.get_or_404(int(data["post"]))
         except:
             return response("BAD_REQUEST")
 
@@ -122,7 +122,7 @@ class Posts(Resource):
         if data is None:
             return response("BAD_REQUEST")
         try:
-            domain = int(data.get("domain", None))
+            domain = int(data("domain"))
         except:
             return response("BAD_REQUEST")
         title = data.get("title", None)

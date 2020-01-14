@@ -3,6 +3,7 @@ import unittest
 from flask import url_for
 
 import json
+from collections import OrderedDict
 
 from flask_restful import Api
 
@@ -28,7 +29,12 @@ class BaseTestCase(unittest.TestCase):
         self.runner = app.test_cli_runner()
 
         db.create_all()
-        Category.init_category(['文章', '付费', '广告'])
+        cg = OrderedDict()
+        cg["媒介"] = ["文章", "音频", "视频", "图片"]
+        cg["版权"] = ["搬运", "原创"]
+        cg["形式"] = ["提问", "经验", "记录", "教程", "范例"]
+        cg["价值"] = ["付费", "广告"]
+        Category.init_category(cg)
         Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
         admin()
         root_domain()

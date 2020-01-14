@@ -16,18 +16,43 @@ class Category(db.Model):
     classifieds = db.relationship('Classify',
                                   back_populates='classifier',
                                   cascade='all')
+    category_group = db.relationship('CategoryGroup',
+                                      back_populates='categories')
+    category_group_id = db.Column(db.Integer, db.ForeignKey('category_group.id'))
+
+    filtered_users = db.relationship('FilterCategory', 
+                                     back_populates='category', 
+                                     lazy='dynamic', 
+                                     cascade='all')
 
     @staticmethod
-    def init_category(categories):
-        for category in categories:
-            c = Category(category=category)
-            db.session.add(c)
+    def init_category(category_groups):
+        for category_group_name, categries in category_groups.items():
+            cg = CategoryGroup(title=category_group_name)
+            db.session.add(cg)
+            for category in categries:
+                c = Category(category=category, category_group=cg)
+                db.session.add(c)
         db.session.commit()
 
     def serialize(self):
         result = {}
         result["id"] = self.id
         result["category"] = self.category
+        return result
+
+class CategoryGroup(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(30), unique=True)
+    categories = db.relationship('Category', 
+                                 back_populates='category_group', 
+                                 lazy='dynamic', 
+                                 cascade='all')
+
+    def serialize(self):
+        result = {}
+        result["title"] = self.title
+        result["categories"] = [category.serialize() for category in self.categories]
         return result
 
 class Emoji(db.Model):
@@ -219,6 +244,16 @@ class Watch(db.Model):
                               back_populates='watchers',
                               lazy='joined')
 
+class FilterCategory(db.Model):
+    user_id = db.Column(db.Integer,
+                        db.ForeignKey('user.id'),
+                        primary_key=True)
+    category_id = db.Column(db.Integer,
+                            db.ForeignKey('category.id'),
+                            primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User', back_populates='filtered_categories', lazy='joined')
+    category = db.relationship('Category', back_populates='filtered_users', lazy='joined')
 
 @whooshee.register_model('nickname', 'username')
 class User(db.Model):
@@ -267,6 +302,10 @@ class User(db.Model):
                                 back_populates='followed',
                                 lazy='dynamic',
                                 cascade='all')
+    filtered_categories = db.relationship('FilterCategory',
+                                           back_populates='user',
+                                           lazy='dynamic',
+                                           cascade='all')
 
     def serialize(self, level=0):
         result = {"nickname": self.nickname, 
@@ -285,11 +324,29 @@ class User(db.Model):
         result["certifieds"] = len(self.certifieds.all())
         result["collections"] = len(self.collections.all())
         result["rootCertified"] = self.root_certified
+        result["filteredCategories"] = [filter_category.category.serialize() 
+                                        for filter_category in self.filtered_categories]
 
         return result
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
+
+    def set_filtered_categories(self, categories):
+        print(categories)
+        for filter_category in self.filtered_categories:
+            if filter_category.category.id not in categories:
+                db.session.delete(filter_category)
+        for category_id in categories:
+            category = Category.query.get_or_404(category_id)
+            if not self.has_filtered_category(category):
+                filter_category = FilterCategory(category=category, user=self)
+                db.session.add(filter_category)
+
+    def has_filtered_category(self, category):
+        return self.filtered_categories.with_parent(self).filter_by(
+            category_id=category.id).first() is not None
+            
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
