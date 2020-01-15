@@ -34,6 +34,10 @@ def response(status="OK", **kwargs):
         status_code = 201
     elif status == "CERTIFY_FAILED":
         result["code"] = 30000
+    elif status == "AGGREGATE_NOT_ALLOWED":
+        result["code"] = 30001
+    elif status == "DEPEND_NOT_ALLOWED":
+        result["code"] = 30002
     elif status == "BAD_REQUEST":
         abort(400)
     elif status == "UNAUTHORIZED":

@@ -24,7 +24,7 @@ class SparkleInstance(Resource):
     def put(self, id):
         sparkle = Sparkle.query.get_or_404(id)
         if sparkle.author_id != current_user.id:
-            return response("BAD_REQUEST", msg="Illegal operation")
+            return response("BAD_REQUEST")
         data = request.get_json()
         if data is None:
             return response("OK", )
@@ -38,9 +38,12 @@ class SparkleInstance(Resource):
     @jwt_required
     def delete(self, id):
         sparkle = Sparkle.query.get_or_404(id)
-        sparkle.deleted = 1
-        db.session.commit()
-        return response("OK", msg="Sparkle deleted")
+        if current_user.id == sparkle.author.id:
+            sparkle.deleted = True
+            db.session.commit()
+            return response("OK")
+        else:
+            return response("BAD_REQUEST")
 
 
 class SparkleTrendings(Resource):

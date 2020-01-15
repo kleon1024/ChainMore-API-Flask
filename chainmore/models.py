@@ -607,12 +607,32 @@ class Domain(db.Model):
                                  lazy='dynamic',
                                  cascade='all')
 
+    def update_dependeds(self, dependeds):
+        for depended in self.dependeds:
+            if depended.depended_id not in dependeds:
+                depended.depended.remove_dependant(self)
+        for depended_id in dependeds:
+            depended = Domain.query.get_or_404(depended_id)
+            depended.add_dependant(self)
+
+    def update_aggregator(self, aggregator):
+        aggregate = self.aggregators.first()
+        if aggregate is not None:
+            aggregate.aggregator = aggregator
+
     def subdomains(self):
         domains = []
         for agg in self.aggregateds.all():
             domains.append(agg.aggregated.id)
             domains.extend(agg.aggregated.subdomains())
         return domains
+
+    def depdomains(self):
+        domains = set()
+        for dep in self.dependants.all():
+            domains.add(dep.dependant.id)
+            domains.update(dep.dependant.depdomains())
+        return list(domains)
 
     def aggregate_structures(self):
         def subdomains(domain):
@@ -680,11 +700,7 @@ class Domain(db.Model):
         result["certifiers"] = len(self.certifiers.all())
         result["bio"] = self.bio
         result["posts"] = len(self.posts.all())
-        result["description"] = ""
-        if depended:
-            result["dependeds"] = [
-                d.depended.serialize(level=1) for d in self.dependeds.paginate(1, 1).items
-            ]
+        result["description"] = self.description
 
         if user is not None:
             result["watched"] = False
@@ -705,21 +721,19 @@ class Domain(db.Model):
 
         if level >= 1: return result
 
-        # result["aggregators"] = [
-        #     a.aggregator.serialize(level=1) for a in self.aggregators.paginate(1, 1).items
-        # ]
+        result["aggregators"] = [
+            a.aggregator.serialize(level=1) for a in self.aggregators
+        ]
         # result["aggregateds"] = [
         #     a.aggregated.serialize(level=1) for a in self.aggregateds.paginate(1, 3).items
         # ]
 
-        # result["dependeds"] = [
-        #     d.depended.serialize(level=1) for d in self.dependeds.paginate(1, 1).items
-        # ]
+        result["dependeds"] = [
+            d.depended.serialize(level=1) for d in self.dependeds
+        ]
         # result["dependants"] = [
         #     d.dependant.serialize(level=1) for d in self.dependants.paginate(1, 3).items
         # ]
-
-        result["description"] = self.description
 
         if level >= 0: return result
 
@@ -786,6 +800,7 @@ class Sparkle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.String(100))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted = db.Column(db.Boolean, default=False)
 
     deleted = db.Column(db.Integer, default=0)
 
@@ -807,10 +822,14 @@ class Sparkle(db.Model):
     like_count = db.Column(db.Integer)
 
     def serialize(self, level=0):
+        if self.deleted:
+            return {'id': self.id, 'deleted': self.deleted}
+
         result = {}
 
         result["id"] = self.id
         result["body"] = self.body
+        result["deleted"] = self.deleted
         result["votes"] = self.replies.filter_by(deleted=0).count()
         result["deleted"] = self.deleted == 1
         result["timestamp"] = self.timestamp
@@ -851,6 +870,8 @@ class Post(db.Model):
                                  cascade='all')
     domain = db.relationship('Domain', back_populates='posts')
 
+    deleted = db.Column(db.Boolean, default=False)
+
     def add_categories(self, categories):
         for classifier in self.classifiers.all():
             if classifier.classifier_id not in categories:
@@ -874,6 +895,12 @@ class Post(db.Model):
 
     def serialize(self, level=0, user=None):
 
+        if self.deleted:
+            return {
+                "id" : self.id,
+                "deleted" : self.deleted,
+            }
+
         description_dict = self.description if level==0 else \
             self.description[:45].replace('\n', '')
 
@@ -888,6 +915,7 @@ class Post(db.Model):
         return {
             "id": self.id,
             "title": self.title,
+            "deleted" : self.deleted,
             "description": description_dict,
             "url": self.url,
             "timestamp": self.timestamp,
@@ -905,13 +933,14 @@ class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    deleted = db.Column(db.Integer, default=0)
+    deleted = db.Column(db.Boolean, default=False)
 
     replied_id = db.Column(db.Integer, db.ForeignKey('comment.id'))
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'))
 
     voters = db.relationship('Vote', back_populates='voted', cascade='all')
+    voter_count = db.Column(db.Integer)
 
     post = db.relationship('Post', back_populates='comments')
     author = db.relationship('User', back_populates='comments')
@@ -923,9 +952,16 @@ class Comment(db.Model):
                               remote_side=[id])
 
     def serialize(self):
+        if self.deleted:
+            return {
+                "id": self.id,
+                "deleted": self.deleted,
+            }
+
         return {
             "id": self.id,
             "body": self.body,
+            "deleted" : self.deleted,
             "timestamp": self.timestamp,
             "replied": self.replied_id,
             "author": self.author.serialize(level=1),

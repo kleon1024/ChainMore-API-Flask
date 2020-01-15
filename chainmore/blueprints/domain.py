@@ -70,6 +70,39 @@ class Domains(Resource):
         return response("OK", msg="Domain Created")
 
     @jwt_required
+    def put(self):
+        data = request.get_json()
+        if data is None:
+            return response("EMPTY_BODY", msg="Empty Body")
+        title = data.get("title", None)
+        description = data.get("description", None)
+        bio = data.get("bio", None)
+        try:
+            depended_domain = Domain.query.get_or_404(int(data["depended"]))
+            aggregator_domain = Domain.query.get_or_404(int(data["aggregator"]))
+            domain = Domain.query.get_or_404(int(data["domain"]))
+        except:
+            return response("BAD_REQUEST")
+
+        if title is not None:
+            domain.title = title
+        if description is not None:
+            domain.description = description
+        if bio is not None:
+            domain.bio = bio
+        
+        if depended_domain.id in domain.depdomains():
+            return response("DEPEND_NOT_ALLOWED")
+        domain.update_dependeds([depended_domain.id])
+        if aggregator_domain.id in domain.subdomains():
+            return response("AGGREGATE_NOT_ALLOWED")
+        domain.update_aggregator(aggregator_domain)
+
+        db.session.commit()
+
+        return response("OK", msg="Domain Updated")
+
+    @jwt_required
     def get(self):
         try:
             id = int(request.args.get('id', '').strip())
@@ -182,9 +215,7 @@ class DomainCerification(Resource):
 class DomainHot(Resource):
     @jwt_required
     def get(self):
-        domains = Domain.query.all()
-        if len(domains) >= 10:
-            domains = domains[0:9]
+        domains = Domain.query.paginate(1, 10).items
         domains = [
             domain.serialize(level=1, user=current_user, depended=True) for domain in domains
         ]

@@ -41,7 +41,7 @@ class PostTestCase(BaseTestCase):
             categories = [1]
         ))
         response = self.put('/v1/post', json=dict(
-            id = 1,
+            post = 1,
             categories = [2]
         ))
         self.OK(response)

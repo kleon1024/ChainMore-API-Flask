@@ -87,6 +87,21 @@ class Posts(Resource):
         return response("OK", item=res)
 
     @jwt_required
+    def delete(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
+
+        post = Post.query.get_or_404(id)
+        if current_user.id == post.author.id:
+            post.deleted = True
+            db.session.commit()
+            return response("OK")
+        else:
+            return response("BAD_REQUEST")
+
+    @jwt_required
     def put(self):
         data = request.get_json()
         if data is None:
@@ -122,11 +137,9 @@ class Posts(Resource):
         if data is None:
             return response("BAD_REQUEST")
         try:
-            domain = int(data("domain"))
+            domain = int(data["domain"])
+            title = data["title"]
         except:
-            return response("BAD_REQUEST")
-        title = data.get("title", None)
-        if (title is None):
             return response("BAD_REQUEST")
         url = data.get("url", "")
         description = data.get("description", "")
@@ -178,18 +191,16 @@ class PostComment(Resource):
 class PostComments(Resource):
     @jwt_required
     def post(self):
+        data = request.get_json()
         try:
-            id = int(request.args.get('id', '').strip())
+            post = Post.query.get_or_404(int(data["id"]))
+            body = data["comment"]
+            replied_id = data.get("reply", None)
         except:
             return response("BAD_REQUEST")
 
-        post = Post.query.get_or_404(id)
-        data = request.get_json()
-        if data is None:
-            return response("EMPTY_BODY", msg="Empty Body")
-        body = data.get("comment", None)
+        
         comment = Comment(body=body, author=current_user, post=post)
-        replied_id = data.get("reply", None)
         if replied_id is not None:
             comment.replied = Comment.query.get_or_404(replied_id)
         db.session.add(comment)
@@ -210,6 +221,38 @@ class PostComments(Resource):
 
         return response("OK", items=comments)
 
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id', '').strip()
+        try:
+            id = int(id)
+        except:
+            return response("BAD_REQUEST")
+        comment = Comment.query.get_or_404(id)
+        if current_user.id == comment.author.id:
+            comment.deleted = True
+            db.session.commit()
+            return response("OK")
+        else:
+            return response("BAD_REQUEST")
+
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+        try:
+            comment = Comment.query.get_or_404(int(data["id"]))
+            body = data.get("comment", None)
+            replied_id = data.get("reply", None)
+        except:
+            return response("BAD_REQUEST")
+
+        if body is not None:
+            comment.body = body
+        if replied_id is not None:
+            comment.replied = Comment.query.get_or_404(replied_id)
+        db.session.commit()
+
+        return response("OK", item=comment.serialize())      
 
 class PostCollect(Resource):
     @jwt_required
@@ -232,6 +275,26 @@ class PostCollect(Resource):
         current_user.uncollect(post)
         return response("OK", msg="Uncollected")
 
+class CommentVote(Resource):
+    @jwt_required
+    def post(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
+        comment = Comment.query.get_or_404(id)
+        current_user.vote(comment)
+        return response("OK", msg="Voted")
+
+    @jwt_required
+    def delete(self):
+        try:
+            id = int(request.args.get('id', '').strip())
+        except:
+            return response("BAD_REQUEST")
+        comment = Comment.query.get_or_404(id)
+        current_user.unvote(comment)
+        return response("OK", msg="Unvoted")
 
 class EmojiReply(Resource):
     @jwt_required
