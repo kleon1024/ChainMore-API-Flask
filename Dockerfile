@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y python3 python3-venv python3-pip
 
 WORKDIR /app/api
 
-ADD ./requirements.txt .
+ADD ./* ./
 RUN pip3 install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 EXPOSE 80
