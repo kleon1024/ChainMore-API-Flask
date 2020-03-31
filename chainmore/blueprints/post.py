@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Post, Comment, Category, Domain, Emoji)
+from ..models import (Post, Comment, Category, Domain, Emoji, RoadMap)
 from ..extensions import db
 
 post_bp = Blueprint('post', __name__)

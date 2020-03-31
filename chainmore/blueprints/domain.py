@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Domain, Post)
+from ..models import (Domain, Post, RoadMap)
 from ..extensions import db
 
 domain_bp = Blueprint('domain', __name__)
@@ -242,9 +242,82 @@ class DomainDependent(Resource):
             return response("BAD_REQUEST")
 
         domain = Domain.query.get_or_404(id)
-        dependent = domain.dependent_structures()
+        dependent = domain.dependent_supdomains()
         return response("OK", dependent=dependent)
 
+class RoadMapInstance(Resource):
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        try:
+            title = data["title"]
+            description = data.get("description", "")
+            heads = data["heads"]
+        except:
+            return response("BAD_REQUEST")
+        
+        roadmap = RoadMap(title=title, description=description, creator=current_user)
+        roadmap.head(heads)
+
+        return response("OK")
+
+    def get(self):
+        try:
+            roadmap = RoadMap.query.get_or_404(request.args["roadmap"])
+        except:
+            return response("BAD_REQUEST")
+            
+        return response("OK", roadmap=roadmap.serialize(level=1))
+
+    @jwt_required
+    def delete(self):
+        try:
+            roadmap = RoadMap.query.get_or_404(request.args["roadmap"])
+        except:
+            return response("BAD_REQUEST")
+        return response("OK")
+
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+        try:
+            roadmap = RoadMap.query.get_or_404(data["roadmap"])
+            title = data.get("title", None)
+            description = data.get("description", None)
+            heads = data.get(heads, None)
+        except:
+            return response("BAD_REQUEST")
+        
+        if title is not None:
+            roadmap.title = title
+        if description is not None:
+            roadmap.description = description
+        if heads is not None:
+            roadmap.update_head(heads)
+        return response("OK")
+
+class RoadMapLearn(Resource):
+    @jwt_required
+    def post(self):
+        try:
+            roadmap = RoadMap.query.get_or_404(request.args["roadmap"])
+        except:
+            return response("BAD_REQUEST")
+        
+        current_user.learn(roadmap)
+
+        return response("OK")
+
+    @jwt_required
+    def delete(self):
+        try:
+            roadmap = RoadMap.query.get_or_404(request.args["roadmap"])
+        except:
+            return response("BAD_REQUEST")
+
+        current_user.unlearn(roadmap)
+
+        return response("OK")
 
 api.add_resource(DomainInstance, '/unsign')
 api.add_resource(Domains, '')
@@ -254,3 +327,5 @@ api.add_resource(DomainCerification, '/certify')
 api.add_resource(DomainHot, '/hot')
 api.add_resource(DomainAggregate, '/aggregate')
 api.add_resource(DomainDependent, '/dependent')
+api.add_resource(RoadMapInstance, '/roadmap')
+api.add_resource(RoadMapLearn, '/roadmap/learn')

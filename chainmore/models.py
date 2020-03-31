@@ -267,6 +267,7 @@ class User(db.Model):
     root_certified = db.Column(db.Boolean)
 
     posts = db.relationship('Post', back_populates='author', cascade='all')
+    roadmaps = db.relationship('RoadMap', back_populates='creator', cascade='all')
     emoji_replies = db.relationship('EmojiReply',
                     back_populates='user',
                     lazy='dynamic',
@@ -290,6 +291,10 @@ class User(db.Model):
                                   cascade='all')
     watcheds = db.relationship('Watch',
                                back_populates='watcher',
+                               lazy='dynamic',
+                               cascade='all')
+    learneds = db.relationship('Learn',
+                               back_populates='learner',
                                lazy='dynamic',
                                cascade='all')
     followings = db.relationship('Follow',
@@ -444,6 +449,23 @@ class User(db.Model):
         return Watch.query.with_parent(self).filter_by(
             watched_id=post.id).first() is not None
 
+    def learn(self, roadmap):
+        if not self.is_learning(roadmap):
+            learn = Learn(learner=self, learned=roadmap)
+            db.session.add(learn)
+            db.session.commit()
+
+    def unlearn(self, roadmap):
+        learn = Learn.query.with_parent(self).filter_by(
+            learned_id=roadmap.id).first()
+        if learn:
+            db.session.delete(learn)
+            db.session.commit()
+
+    def is_learning(self, roadmap):
+        return Learn.query.with_parent(self).filter_by(
+            learned_id=roadmap.id).first() is not None
+
     def add_emoji_reply(self, post, emoji):
         if not self.is_emoji_replied(post, emoji):
             reply = EmojiReply(
@@ -551,6 +573,95 @@ class Rule(db.Model):
 
         return result
 
+class RoadMapHead(db.Model):
+    domain_id = db.Column(db.Integer,
+                           db.ForeignKey('domain.id'),
+                           primary_key=True)
+    roadmap_id = db.Column(db.Integer,
+                           db.ForeignKey('road_map.id'),
+                           primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    domain = db.relationship('Domain', back_populates='roadmaps', lazy='joined')
+    roadmap = db.relationship('RoadMap',
+                              back_populates='heads',
+                              lazy='joined')
+
+class Learn(db.Model):
+    learner_id = db.Column(db.Integer,
+                           db.ForeignKey('user.id'),
+                           primary_key=True)
+    learned_id = db.Column(db.Integer,
+                           db.ForeignKey('road_map.id'),
+                           primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    learner = db.relationship('User', back_populates='learneds', lazy='joined')
+    learned = db.relationship('RoadMap',
+                              back_populates='learners',
+                              lazy='joined')
+
+@whooshee.register_model('title', 'description')
+class RoadMap(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    create_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    creator = db.relationship('User', back_populates='roadmaps')
+    learners = db.relationship('Learn', 
+                                back_populates='learned',
+                                lazy='dynamic',
+                                cascade='all')
+    heads = db.relationship('RoadMapHead',
+                                back_populates='roadmap',
+                                lazy='dynamic',
+                                cascade='all')
+
+    def serialize(self, level=0):
+        result = {}
+        result["id"] = self.id
+        result["title"] = self.title
+        result["description"] = self.description[0:30] if len(self.description) > 30 else self.description
+        result["createTimestamp"] = self.create_timestamp
+        result["modifyTimestamp"] = self.modify_timestamp
+        result["creator"] = self.creator.serialize(level=1)
+        result["learners"] = self.learners.count()
+        if level >= 1: return result
+        result["description"] = self.description
+        result["heads"] = [head.domain.dependent_supdomains() for head in self.heads]
+        return result
+
+    def update_head(self, domains):
+        for head in self.heads:
+            if head.domain_id not in domains:
+                db.session.delete(head)
+        for domain_id in domains:
+            domain = Domain.query.get_or_404(domain_id)
+            if not self.is_heading(domain):
+                head = RoadMapHead(roadmap=self, domain=domain)
+                db.session.add(head)
+        db.session.commit()
+
+    def head(self, domains):
+        for domain_id in domains:
+            domain = Domain.query.get_or_404(domain_id)
+            if not self.is_heading(domain):
+                head = RoadMapHead(roadmap=self, domain=domain)
+                db.session.add(head)
+        db.session.commit()
+
+    def unhead(self, domain):
+        head = self.heads.filter_by(domain_id=domain.id).first()
+        if head:
+            db.session.delete(head)
+            db.session.commit()
+
+    def is_heading(self, domain):
+        if domain.id is None:
+            return False
+        return self.heads.filter_by(domain_id=domain.id).first() is not None
+
 
 @whooshee.register_model('title', 'description')
 class Domain(db.Model):
@@ -569,6 +680,11 @@ class Domain(db.Model):
                                cascade='all')
 
     posts = db.relationship('Post',
+                            back_populates='domain',
+                            lazy='dynamic',
+                            cascade='all')
+
+    roadmaps = db.relationship('RoadMapHead',
                             back_populates='domain',
                             lazy='dynamic',
                             cascade='all')
@@ -662,33 +778,25 @@ class Domain(db.Model):
         supdomain = supdomains(subdomain)
         return supdomain
 
-    def dependent_structures(self):
-        def subdomains(domain):
-            ret = {
-                "domain" : domain.serialize(level=1),
-                "subdomains" : [],
-                "expanded" : False,
-            }
-            for dep in domain.dependants.all():
-                ret["subdomains"].append(subdomains(dep.dependant))
-            return ret
+    def dependent_subdomains(domain):
+        ret = {
+            "domain" : domain.serialize(level=1),
+            "subdomains" : [],
+            "expanded" : True,
+        }
+        for dep in domain.dependants.all():
+            ret["subdomains"].append(self.dependent_subdomains(dep.dependant))
+        return ret
 
-        def supdomains(domain):
-            supdomain = domain["domain"].dependeds.first()
-            domain["domain"] = domain["domain"].serialize(level=1)
-            if supdomain is None:
-                return domain
-            ret = {
-                "domain" : supdomain.depended,
-                "subdomains" : [domain],
-                "expanded" : True,
-            }
-            return supdomains(ret)
-
-        subdomain = subdomains(self)
-        subdomain["domain"] = self
-        supdomain = supdomains(subdomain)
-        return supdomain
+    def dependent_supdomains(domain):
+        ret = {
+            "domain" : domain.serialize(level=1),
+            "subdomains" : [],
+            "expanded" : True,
+        }
+        for dep in domains.dependeds.all():
+            ret["subdomains"].append(self.dependent_supdomains(dep.depended))
+        return ret
 
     def serialize(self, level=0, user=None, depended=False):
         result = {}
