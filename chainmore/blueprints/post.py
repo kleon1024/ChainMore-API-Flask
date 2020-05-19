@@ -50,6 +50,7 @@ class PostInstance(Resource):
         db.session.commit()
         return response("OK", msg="Post deleted")
 
+
 class PostTrendings(Resource):
     def get(self):
         try:
@@ -57,10 +58,11 @@ class PostTrendings(Resource):
             limit = int(request.args.get('limit', 5))
         except:
             return response("BAD_REQUEST")
-        posts = Post.query.order_by(
-            Post.timestamp.desc()).paginate(offset, limit).items
+        posts = Post.query.order_by(Post.timestamp.desc()).paginate(
+            offset, limit).items
         posts = [post.serialize(level=1) for post in posts]
         return response("OK", items=posts)
+
 
 class PostUnsign(Resource):
     def get(self):
@@ -72,6 +74,7 @@ class PostUnsign(Resource):
         post = Post.query.get_or_404(id)
         post = post.serialize(level=0)
         return response("OK", item=post)
+
 
 class Posts(Resource):
     @jwt_required
@@ -118,7 +121,7 @@ class Posts(Resource):
         url = data.get("url", None)
         description = data.get("description", None)
         categories = data.get("categories", None)
-        
+
         if title != None:
             post.title = title
         if url != None:
@@ -130,7 +133,7 @@ class Posts(Resource):
             post.add_categories(categories)
         db.session.commit()
         return response("OK", msg="Resource putted")
-              
+
     @jwt_required
     def post(self):
         data = request.get_json()
@@ -147,7 +150,7 @@ class Posts(Resource):
 
         if (url == "" and description == ""):
             return response("BAD_REQUEST")
-        
+
         domain = Domain.query.get_or_404(domain)
 
         post = Post(title=title,
@@ -199,7 +202,6 @@ class PostComments(Resource):
         except:
             return response("BAD_REQUEST")
 
-        
         comment = Comment(body=body, author=current_user, post=post)
         if replied_id is not None:
             comment.replied = Comment.query.get_or_404(replied_id)
@@ -252,7 +254,8 @@ class PostComments(Resource):
             comment.replied = Comment.query.get_or_404(replied_id)
         db.session.commit()
 
-        return response("OK", item=comment.serialize())      
+        return response("OK", item=comment.serialize())
+
 
 class PostCollect(Resource):
     @jwt_required
@@ -275,6 +278,7 @@ class PostCollect(Resource):
         current_user.uncollect(post)
         return response("OK", msg="Uncollected")
 
+
 class CommentVote(Resource):
     @jwt_required
     def post(self):
@@ -295,6 +299,7 @@ class CommentVote(Resource):
         comment = Comment.query.get_or_404(id)
         current_user.unvote(comment)
         return response("OK", msg="Unvoted")
+
 
 class EmojiReply(Resource):
     @jwt_required

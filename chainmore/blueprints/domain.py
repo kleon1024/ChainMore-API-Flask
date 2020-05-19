@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Domain, Post, RoadMap)
+from ..models import (Domain, RoadMap)
 from ..extensions import db
 
 domain_bp = Blueprint('domain', __name__)
@@ -16,23 +16,13 @@ api = Api(domain_bp)
 
 
 class DomainInstance(Resource):
-    def get(self):
-        try:
-            id = int(request.args.get('id', '').strip())
-        except:
-            return response("BAD_REQUEST")
-        domain = Domain.query.get_or_404(id)
-        return response("OK", item=domain.serialize(level=0))
-
-
-class Domains(Resource):
     @jwt_required
     def post(self):
         data = request.get_json()
         if data is None:
             return response("EMPTY_BODY", msg="Empty Body")
         title = data.get("title", None)
-        description = data.get("description", "")
+        intro = data.get("intro", "")
         bio = data.get("bio", "人正在关注")
         if title is None:
             return response("BAD_REQUEST", msg="No title provided")
@@ -53,7 +43,7 @@ class Domains(Resource):
 
         domain = Domain(
             title=title,
-            description=description,
+            intro=intro,
             creator_id=current_user.id,
             bio=bio,
         )
@@ -75,22 +65,23 @@ class Domains(Resource):
         if data is None:
             return response("EMPTY_BODY", msg="Empty Body")
         title = data.get("title", None)
-        description = data.get("description", None)
+        intro = data.get("intro", None)
         bio = data.get("bio", None)
         try:
             depended_domain = Domain.query.get_or_404(int(data["depended"]))
-            aggregator_domain = Domain.query.get_or_404(int(data["aggregator"]))
+            aggregator_domain = Domain.query.get_or_404(int(
+                data["aggregator"]))
             domain = Domain.query.get_or_404(int(data["domain"]))
         except:
             return response("BAD_REQUEST")
 
         if title is not None:
             domain.title = title
-        if description is not None:
-            domain.description = description
+        if intro is not None:
+            domain.intro = intro
         if bio is not None:
             domain.bio = bio
-        
+
         if depended_domain.id in domain.depdomains():
             return response("DEPEND_NOT_ALLOWED")
         domain.update_dependeds([depended_domain.id])
@@ -197,7 +188,7 @@ class DomainCerification(Resource):
         domain.certify(current_user)
         if (domain.id == 1):
             current_user.root_certified = True
-            db.session.commit()        
+            db.session.commit()
         return response("OK", msg="Certified")
 
     @jwt_required
@@ -217,9 +208,11 @@ class DomainHot(Resource):
     def get(self):
         domains = Domain.query.paginate(1, 10).items
         domains = [
-            domain.serialize(level=1, user=current_user, depended=True) for domain in domains
+            domain.serialize(level=1, user=current_user, depended=True)
+            for domain in domains
         ]
         return response("OK", items=domains)
+
 
 class DomainAggregate(Resource):
     @jwt_required
@@ -233,6 +226,7 @@ class DomainAggregate(Resource):
         aggregate = domain.aggregate_structures()
         return response("OK", aggregate=aggregate)
 
+
 class DomainDependent(Resource):
     @jwt_required
     def get(self):
@@ -245,18 +239,19 @@ class DomainDependent(Resource):
         dependent = domain.dependent_supdomains()
         return response("OK", dependent=dependent)
 
+
 class RoadMapInstance(Resource):
     @jwt_required
     def post(self):
         data = request.get_json()
         try:
             title = data["title"]
-            description = data.get("description", "")
+            intro = data.get("intro", "")
             heads = data["heads"]
         except:
             return response("BAD_REQUEST")
-        
-        roadmap = RoadMap(title=title, description=description, creator=current_user)
+
+        roadmap = RoadMap(title=title, intro=intro, creator=current_user)
         roadmap.head(heads)
 
         return response("OK")
@@ -266,7 +261,7 @@ class RoadMapInstance(Resource):
             roadmap = RoadMap.query.get_or_404(request.args["roadmap"])
         except:
             return response("BAD_REQUEST")
-            
+
         return response("OK", roadmap=roadmap.serialize(level=1))
 
     @jwt_required
@@ -283,18 +278,19 @@ class RoadMapInstance(Resource):
         try:
             roadmap = RoadMap.query.get_or_404(data["roadmap"])
             title = data.get("title", None)
-            description = data.get("description", None)
+            intro = data.get("intro", None)
             heads = data.get(heads, None)
         except:
             return response("BAD_REQUEST")
-        
+
         if title is not None:
             roadmap.title = title
-        if description is not None:
-            roadmap.description = description
+        if intro is not None:
+            roadmap.intro = intro
         if heads is not None:
             roadmap.update_head(heads)
         return response("OK")
+
 
 class RoadMapLearn(Resource):
     @jwt_required
@@ -303,7 +299,7 @@ class RoadMapLearn(Resource):
             roadmap = RoadMap.query.get_or_404(request.args["roadmap"])
         except:
             return response("BAD_REQUEST")
-        
+
         current_user.learn(roadmap)
 
         return response("OK")
@@ -319,8 +315,8 @@ class RoadMapLearn(Resource):
 
         return response("OK")
 
-api.add_resource(DomainInstance, '/unsign')
-api.add_resource(Domains, '')
+
+api.add_resource(DomainInstance, '/')
 api.add_resource(DomainWatch, '/watch')
 api.add_resource(DomainPost, '/post')
 api.add_resource(DomainCerification, '/certify')

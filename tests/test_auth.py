@@ -2,8 +2,8 @@ from flask import current_app
 
 from tests.base import BaseTestCase
 
-class AuthTestCase(BaseTestCase):
 
+class AuthTestCase(BaseTestCase):
     def test_login(self):
         self.OK(self.login())
 

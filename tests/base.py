@@ -9,10 +9,12 @@ from flask_restful import Api
 
 from chainmore import create_app
 from chainmore.extensions import db
-from chainmore.models import User, Category, Emoji
+from chainmore.models import User
 from chainmore.blueprints import auth
 
-from chainmore.initialize import (admin, root_domain, super_domain, admin_clear_root_certification)
+from chainmore.initialize import (admin, root_domain, resource_type,
+                                  media_type)
+
 
 class BaseTestCase(unittest.TestCase):
 
@@ -29,16 +31,10 @@ class BaseTestCase(unittest.TestCase):
         self.runner = app.test_cli_runner()
 
         db.create_all()
-        cg = OrderedDict()
-        cg["媒介"] = ["文章", "音频", "视频", "图片"]
-        cg["版权"] = ["搬运", "原创"]
-        cg["形式"] = ["提问", "经验", "记录", "教程", "范例"]
-        cg["价值"] = ["付费", "广告"]
-        Category.init_category(cg)
-        Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
         admin()
         root_domain()
-        super_domain()
+        resource_type()
+        media_type()
 
     def tearDown(self):
         db.drop_all()
@@ -49,10 +45,9 @@ class BaseTestCase(unittest.TestCase):
             username = 'kleon'
             password = 'hellokleon'
 
-        data = self.client.post('/v1/auth/signin', json=dict(
-            username=username,
-            password=password
-        ))
+        data = self.client.post('/v1/auth/signin',
+                                json=dict(username=username,
+                                          password=password))
         response = data.get_json()
         if (response is not None):
             self.access_token = response["accessToken"]
@@ -60,36 +55,30 @@ class BaseTestCase(unittest.TestCase):
             self.nickname = response["nickname"]
             self.username = response["username"]
         return data
-        
+
     def logout(self):
         return self.delete('/v1/auth/signout')
 
     def post(self, url, **kwargs):
-        kwargs["headers"] = {
-            'Authorization' : 'Bearer ' + self.access_token
-        }
+        kwargs["headers"] = {'Authorization': 'Bearer ' + self.access_token}
         print(kwargs)
         return self.client.post(url, **kwargs)
 
     def get(self, url, **kwargs):
-        kwargs["headers"] = {
-            'Authorization' : 'Bearer ' + self.access_token
-        }
+        kwargs["headers"] = {'Authorization': 'Bearer ' + self.access_token}
         return self.client.get(url, **kwargs)
 
     def put(self, url, **kwargs):
-        kwargs["headers"] = {
-            'Authorization' : 'Bearer ' + self.access_token
-        }
+        kwargs["headers"] = {'Authorization': 'Bearer ' + self.access_token}
         return self.client.put(url, **kwargs)
 
     def delete(self, url, **kwargs):
-        kwargs["headers"] = {
-            'Authorization' : 'Bearer ' + self.access_token
-        }
+        kwargs["headers"] = {'Authorization': 'Bearer ' + self.access_token}
         return self.client.delete(url, **kwargs)
-    
+
     def OK(self, response):
         data = response.get_json()
         self.assertEqual(response.status_code, 200)
+        if response.status_code != 200:
+            print(response)
         self.assertEqual(data["code"], 20000)

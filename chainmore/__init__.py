@@ -11,15 +11,16 @@ from flask import Flask
 from collections import OrderedDict
 
 from .blueprints.auth import auth_bp
-from .blueprints.domain import domain_bp
-from .blueprints.comment import comment_bp
-from .blueprints.sparkle import sparkle_bp
-from .blueprints.post import post_bp
+# from .blueprints.domain import domain_bp
+# from .blueprints.comment import comment_bp
+# from .blueprints.sparkle import sparkle_bp
+# from .blueprints.post import post_bp
 from .blueprints.user import user_bp
+from .blueprints.resource import resource_bp
 from .blueprints.main import main_bp
+
 from .extensions import db, jwt, whooshee
 from .settings import config
-from .models import (Category, Emoji)
 from flask_migrate import Migrate
 
 
@@ -48,11 +49,12 @@ def register_extensions(app):
 
 def register_blueprints(app):
     app.register_blueprint(auth_bp, url_prefix='/v1/auth')
-    app.register_blueprint(domain_bp, url_prefix='/v1/domain')
-    app.register_blueprint(comment_bp, url_prefix='/v1/comment')
-    app.register_blueprint(post_bp, url_prefix='/v1/post')
-    app.register_blueprint(sparkle_bp, url_prefix='/v1/sparkle')
+    # app.register_blueprint(domain_bp, url_prefix='/v1/domain')
+    # app.register_blueprint(comment_bp, url_prefix='/v1/comment')
+    # app.register_blueprint(post_bp, url_prefix='/v1/post')
+    # app.register_blueprint(sparkle_bp, url_prefix='/v1/sparkle')
     app.register_blueprint(user_bp, url_prefix='/v1/user')
+    app.register_blueprint(resource_bp, url_prefix='/v1/resource')
     app.register_blueprint(main_bp, url_prefix='/v1')
 
 
@@ -64,31 +66,22 @@ def register_errorhandlers(app):
 
 def register_commands(app):
     @app.cli.command()
+    def reset():
+        """Reset database"""
+        db.drop_all()
+        db.create_all()
+        db.session.commit()
+
+    @app.cli.command()
     def init():
         """Initialize data"""
         click.echo('Initializing data...')
-        # db.drop_all()
-        # db.create_all()
 
-        from .initialize import (admin, root_domain, super_domain, admin_clear_root_certification)
+        from .initialize import (admin, root_domain, super_domain,
+                                 admin_clear_root_certification)
 
-        # click.echo('Intializing categories')
-        # Category.init_category(['文章', '付费', '广告'])
-        # click.echo('Creating admin')
-        # admin()
-        # click.echo('Creating root domain')
-        # root_domain()
-        # click.echo('Creating super domains')
-        # super_domain()
-        # Emoji.init_emoji(["🤩","🤔","😑","❤","🚀","🍎"])
-        cg = OrderedDict()
-        cg["媒介"] = ["文章", "音频", "视频", "图片"]
-        cg["版权"] = ["搬运", "原创"]
-        cg["形式"] = ["提问", "经验", "记录", "教程", "范例"]
-        cg["价值"] = ["付费", "广告"]
-        Category.__table__.drop(db.engine)
-        Category.__table__.create(db.engine)
-        Category.init_category(cg)
+        click.echo('Creating admin...')
+        admin()
 
         click.echo('Done')
 
@@ -110,11 +103,6 @@ def register_commands(app):
                             fake_domain, fake_post, fake_watch, fake_like,
                             fake_vote, fake_collect)
 
-        db.drop_all()
-        db.create_all()
-
-        click.echo('Initializing categories...')
-        Category.init_category(['文章'])
         click.echo('Generating the administrator...')
         fake_admin()
         click.echo('Generating %d users...' % user)

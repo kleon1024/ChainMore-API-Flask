@@ -8,12 +8,12 @@ import sys
 
 basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
-# SQLite URI compatible
-WIN = sys.platform.startswith('win')
-if WIN:
-    prefix = 'sqlite:///'
-else:
-    prefix = 'sqlite:////'
+# Postgresql URI compatible
+# WIN = sys.platform.startswith('win')
+# if WIN:
+#     prefix = 'postgresql://chainmore:hellochainmore@database/chainmore_db'
+# else:
+#     prefix = 'postgresql://chainmore:hellochainmore@database/chainmore_db'
 
 
 class Operations:
@@ -70,8 +70,8 @@ class BaseConfig:
 
 
 class DevelopmentConfig(BaseConfig):
-    SQLALCHEMY_DATABASE_URI = \
-        prefix + os.path.join(basedir, 'data-dev.db')
+    prefix = 'postgresql://chainmore:hellochainmore@localhost:5432/chainmore_db'
+    SQLALCHEMY_DATABASE_URI = prefix
     REDIS_URL = "redis://localhost"
 
 
@@ -82,10 +82,10 @@ class TestingConfig(BaseConfig):
 
 
 class ProductionConfig(BaseConfig):
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL', prefix + os.path.join(basedir, 'data.db'))
-    APK_URL = os.getenv('APK_URL', basedir)
+    prefix = 'postgresql://chainmore:hellochainmore@database/chainmore_db'
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', prefix)
     PROPAGATE_EXCEPTIONS = True
+
 
 config = {
     'development': DevelopmentConfig,

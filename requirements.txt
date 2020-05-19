@@ -2,6 +2,7 @@
 gunicorn
 yapf
 flake8
+psycopg2
 
 # Testing
 faker

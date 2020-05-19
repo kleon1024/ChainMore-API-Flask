@@ -21,6 +21,7 @@ class UserInstanceUnsign(Resource):
         user = User.query.filter_by(username=username).first_or_404()
         return response("OK", user=user.serialize())
 
+
 class UserInstance(Resource):
     @jwt_required
     def get(self, username):
@@ -48,6 +49,7 @@ class UserInstance(Resource):
         db.session.commit()
         return response("OK")
 
+
 class UserFollow(Resource):
     @jwt_required
     def post(self):
@@ -69,7 +71,7 @@ class UserFollow(Resource):
         current_user.unfollow(user)
         return response("OK", msg="Unfollowed")
 
-           
+
 api.add_resource(UserInstance, '/<username>')
 api.add_resource(UserInstanceUnsign, '/unsign/<username>')
 api.add_resource(UserFollow, '/follow')

@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Comment)
+from ..models import Domain
 from ..extensions import db
 
 comment_bp = Blueprint('comment', __name__)

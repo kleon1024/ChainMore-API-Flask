@@ -104,8 +104,8 @@ def fake_post(count=30):
             description=fake.text(),
             url="https://juejin.im/post/5db684ddf265da4d495c40e5",
             timestamp=fake.date_time_this_year(),
-            category=Category.query.get(
-                random.randint(1, Category.query.count())),
+            # category=Category.query.get(
+            #     random.randint(1, Category.query.count())),
             author=User.query.get(random.randint(1, User.query.count())),
             domain=Domain.query.get(random.randint(1, Domain.query.count())),
         )

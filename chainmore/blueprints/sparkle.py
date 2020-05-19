@@ -94,7 +94,7 @@ class SparkleComment(Resource):
             sparkle = Sparkle.query.get_or_404(id)
         else:
             sparkle = Sparkle.query.get_or_404(int(replied_id))
-        
+
         body = data.get("body", None)
         comment = Sparkle(body=body, author=current_user, replied=sparkle)
 

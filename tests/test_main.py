@@ -2,8 +2,8 @@ from flask import current_app
 
 from tests.base import BaseTestCase
 
-class MainTestCase(BaseTestCase):
 
+class MainTestCase(BaseTestCase):
     def test_get_category_groups(self):
         self.login()
         response = self.get('/v1/category_groups')

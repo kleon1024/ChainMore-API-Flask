@@ -85,8 +85,10 @@ class SignIn(Resource):
 
         if user is not None and user.validate_password(password):
             username = user.username
-            access_token = create_access_token(identity=username, expires_delta=access_token_expire_time)
-            refresh_token = create_refresh_token(identity=username, expires_delta=refresh_token_expire_time)
+            access_token = create_access_token(
+                identity=username, expires_delta=access_token_expire_time)
+            refresh_token = create_refresh_token(
+                identity=username, expires_delta=refresh_token_expire_time)
             return response("OK",
                             msg="User Login As {}".format(username),
                             username=username,
@@ -111,7 +113,10 @@ class SigninRefresh(Resource):
         username = current_user.username
         access_token = create_access_token(identity=username)
         refresh_token = create_refresh_token(identity=username)
-        return response("OK", msg="Token Refreshed", accessToken=access_token, refreshToken=refresh_token)
+        return response("OK",
+                        msg="Token Refreshed",
+                        accessToken=access_token,
+                        refreshToken=refresh_token)
 
 
 api.add_resource(SignIn, '/signin')

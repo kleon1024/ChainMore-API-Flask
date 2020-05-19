@@ -8,7 +8,7 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import (jwt_required, current_user)
 
 from ..utils import (response)
-from ..models import (User, Domain, Post, CategoryGroup)
+from ..models import (User, Domain)
 import os
 
 main_bp = Blueprint('main', __name__)
@@ -44,7 +44,8 @@ class HotSearch(Resource):
     def get(self):
         offset = int(request.args.get('offset', 1))
         limit = int(request.args.get('limit', 10))
-        domains = Domain.query.order_by(Domain.timestamp.desc()).paginate(offset, limit).items
+        domains = Domain.query.order_by(Domain.timestamp.desc()).paginate(
+            offset, limit).items
         domains = [domain.title for domain in domains]
         hot = {}
         hot["queries"] = domains
@@ -62,30 +63,40 @@ class DomainSearch(Resource):
 
         domains = Domain.query.whooshee_search(q).paginate(offset, limit).items
         domains = [
-            domain.serialize(level=1, user=current_user, depended=True) for domain in domains
+            domain.serialize(level=1, user=current_user, depended=True)
+            for domain in domains
         ]
         return response("OK", items=domains)
+
 
 class Update(Resource):
     def get(self):
         version = {}
         version["appStoreUrl"] = ""
-        version["apkUrl"] = "https://cm-1301052396.cos.ap-shanghai.myqcloud.com/chainmore_1.0.6_20200113001113.apk"
+        version[
+            "apkUrl"] = "https://cm-1301052396.cos.ap-shanghai.myqcloud.com/chainmore_1.0.6_20200113001113.apk"
         version["version"] = "1.0.6"
         version["content"] = "全新升级:\n1.增加标签系统\n2.增加表情回复系统\n3.改进视图\n4.修复若干缺陷"
 
         return response("OK", item=version)
 
+
 class Download(Resource):
     def get(self, filename):
         head, tail = os.path.split(filename)
-        path = os.path.join(current_app.config.get('APK_URL', current_app.root_path), head)
+        path = os.path.join(
+            current_app.config.get('APK_URL', current_app.root_path), head)
         return send_from_directory(path, filename=tail, as_attachment=True)
+
 
 class CategoryGroupResource(Resource):
     def get(self):
-        category_groups = [category_group.serialize() for category_group in CategoryGroup.query.all()]
+        category_groups = [
+            category_group.serialize()
+            for category_group in CategoryGroup.query.all()
+        ]
         return response("OK", items=category_groups)
+
 
 api.add_resource(Search, '/search')
 api.add_resource(HotSearch, '/search/hot')
