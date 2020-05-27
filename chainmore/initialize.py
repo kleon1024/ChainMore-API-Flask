@@ -9,7 +9,7 @@ from faker import Faker
 from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
-from .models import (User, Domain, ResourceType, MediaType)
+from .models import (User, Domain, ResourceType, MediaType, Role)
 from .utils import (exist_username, exist_email, exist_nickname, exist_domain)
 
 fake = Faker(locale='zh_CN')
@@ -23,6 +23,8 @@ def admin():
                  bio='阡陌 - 连接更多')
 
     admin.set_password('hellokleon')
+    admin.set_role('Administrator')
+
     db.session.add(admin)
     db.session.commit()
 
@@ -45,3 +47,6 @@ def media_type():
     m = MediaType(name="text")
     db.session.add(m)
     db.session.commit()
+
+def init_role():
+    Role.init_role()

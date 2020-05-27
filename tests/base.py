@@ -13,7 +13,7 @@ from chainmore.models import User
 from chainmore.blueprints import auth
 
 from chainmore.initialize import (admin, root_domain, resource_type,
-                                  media_type)
+                                  media_type, init_role)
 
 
 class BaseTestCase(unittest.TestCase):
@@ -31,10 +31,12 @@ class BaseTestCase(unittest.TestCase):
         self.runner = app.test_cli_runner()
 
         db.create_all()
+        init_role()
         admin()
         root_domain()
         resource_type()
         media_type()
+        
 
     def tearDown(self):
         db.drop_all()

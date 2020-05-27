@@ -26,12 +26,87 @@ db.Model.to_dict = to_dict
 db.Model.s = s
 
 
+class UserRoles:
+    LOCKED = 'Locked'
+    USER = 'User'
+    MODERATOR = 'Moderator'
+    ADMINISTRATOR = 'Administrator'
+
+
+class Permissions:
+    FOLLOW = 'FOLLOW'
+    COLLECT = 'COLLECT'
+    COMMENT = 'COMMENT'
+    UPLOAD = 'UPLOAD'
+    MODERATE = 'MODERATE'
+    ADMINISTER = 'ADMINISTER'
+
+
+roles_permissions = db.Table(
+    'roles_permissions',
+    db.Column('role_id', db.Integer, db.ForeignKey('role.id')),
+    db.Column('permission_id', db.Integer, db.ForeignKey('permission.id')))
+
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(30), unique=True)
+    permissions = db.relationship('Permission',
+                                  secondary=roles_permissions,
+                                  back_populates='roles')
+    users = db.relationship('User', back_populates='role')
+
+    @staticmethod
+    def init_role():
+        roles_permissions_map = {
+            'Locked': ['FOLLOW', 'COLLECT'],
+            'User': ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD'],
+            'Moderator':
+            ['FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE'],
+            'Administrator': [
+                'FOLLOW', 'COLLECT', 'COMMENT', 'UPLOAD', 'MODERATE',
+                'ADMINISTER'
+            ],
+        }
+        for role_name in roles_permissions_map:
+            role = Role.query.filter_by(name=role_name).first()
+            if role is None:
+                role = Role(name=role_name)
+                db.session.add(role)
+            role.permissions = []
+            for permission_name in roles_permissions_map[role_name]:
+                permission = Permission.query.filter_by(
+                    name=permission_name).first()
+                if permission is None:
+                    permission = Permission(name=permission_name)
+                    db.session.add(permission)
+                role.permissions.append(permission)
+        db.session.commit()
+
+    def __repr__(self):
+        return '<Role %r>' % self.name
+
+
+class Permission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(30), unique=True)
+    roles = db.relationship('Role',
+                            secondary=roles_permissions,
+                            back_populates='permissions')
+
+    def __repr__(self):
+        return '<Permission %r>' % self.name
+
+
 class MediaType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Media Type: Article/Video/Audio/Image/VR/AR/offline/book/e-book
     name = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='media_type')
+
+    def __repr__(self):
+        return '<MediaType %r>' % self.name
 
 
 class ResourceType(db.Model):
@@ -42,6 +117,9 @@ class ResourceType(db.Model):
     # External: Quora/Blog/Podcast
     name = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='resource_type')
+
+    def __repr__(self):
+        return '<ResourceType %r>' % self.name
 
 
 class Resource(db.Model):
@@ -264,6 +342,22 @@ class User(db.Model):
     nickname = db.Column(db.String(30), unique=True)
     bio = db.Column(db.String(120))
 
+    locked = db.Column(db.Boolean, default=False)
+    active = db.Column(db.Boolean, default=True)
+
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    role = db.relationship('Role', back_populates='users')
+
+    avatar_raw = db.Column(db.String)
+    avatar_raw_temp = db.Column(db.String)
+    avatar_s = db.Column(db.String)
+    avatar_m = db.Column(db.String)
+    avatar_l = db.Column(db.String)
+
+    receive_comment_notification = db.Column(db.Boolean, default=True)
+    receive_follow_notification = db.Column(db.Boolean, default=True)
+    receive_collect_notification = db.Column(db.Boolean, default=True)
+
     root_certified = db.Column(db.Boolean)
 
     collections = db.relationship('Collection',
@@ -317,20 +411,43 @@ class User(db.Model):
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
 
-    def set_filtered_categories(self, categories):
-        print(categories)
-        for filter_category in self.filtered_categories:
-            if filter_category.category.id not in categories:
-                db.session.delete(filter_category)
-        for category_id in categories:
-            category = Category.query.get_or_404(category_id)
-            if not self.has_filtered_category(category):
-                filter_category = FilterCategory(category=category, user=self)
-                db.session.add(filter_category)
+    def set_role(self, role='User'):
+        self.role = Role.query.filter_by(name=role).first_or_404()
+        db.session.commit()
 
-    def has_filtered_category(self, category):
-        return self.filtered_categories.with_parent(self).filter_by(
-            category_id=category.id).first() is not None
+    def __repr__(self):
+        return '<User %r>' % self.username
+
+    # def set_filtered_categories(self, categories):
+    #     print(categories)
+    #     for filter_category in self.filtered_categories:
+    #         if filter_category.category.id not in categories:
+    #             db.session.delete(filter_category)
+    #     for category_id in categories:
+    #         category = Category.query.get_or_404(category_id)
+    #         if not self.has_filtered_category(category):
+    #             filter_category = FilterCategory(category=category, user=self)
+    #             db.session.add(filter_category)
+
+    # def has_filtered_category(self, category):
+    #     return self.filtered_categories.with_parent(self).filter_by(
+    #         category_id=category.id).first() is not None
+
+    def generate_avatar(self):
+        avatar = Identicon()
+        filenames = avatar.generate(text=self.username)
+        self.avatar_s = filenames[0]
+        self.avatar_m = filenames[1]
+        self.avatar_l = filenames[2]
+        db.session.commit()
+
+    @property
+    def is_admin(self):
+        return self.role.name == UserRoles.ADMINISTRATOR
+
+    def can(self, permission_name):
+        permission = Permission.query.filter_by(name=permission_name).first()
+        return permission is not None and self.role is not None and permission in self.role.permissions
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -359,6 +476,32 @@ class User(db.Model):
     def is_followed_by(self, user):
         return self.followers.filter_by(
             follower_id=user.id).first() is not None
+
+    def follow_self_all(self):
+        for user in User.query.all():
+            user.follow(self)
+
+    @property
+    def is_active(self):
+        return self.active
+
+    def lock(self):
+        self.locked = True
+        self.role = Role.query.filter_by(name=UserRoles.LOCKED).first()
+        db.session.commit()
+
+    def unlock(self):
+        self.locked = False
+        self.role = Role.query.filter_by(name=UserRoles.USER).first()
+        db.session.commit()
+
+    def block(self):
+        self.active = False
+        db.session.commit()
+
+    def unblock(self):
+        self.active = True
+        db.session.commit()
 
     def collect(self, post):
         if not self.is_collecting(post):
@@ -523,7 +666,7 @@ class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String, unique=True)
     intro = db.Column(db.String)
-    
+
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     creator = db.relationship('User', back_populates='domains')
