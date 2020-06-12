@@ -48,5 +48,6 @@ def media_type():
     db.session.add(m)
     db.session.commit()
 
+
 def init_role():
     Role.init_role()

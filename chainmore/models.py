@@ -131,7 +131,7 @@ class Resource(db.Model):
     # resource router
     url = db.Column(db.String, unique=True)
 
-    # External resource with third-party url, which is considered as reship.
+    # External resource with third-party url, which is considered as from web.
     # If this is declared as False, the resource must be declared as original.
     external = db.Column(db.Boolean, default=True)
 
@@ -152,6 +152,12 @@ class Resource(db.Model):
                                   cascade='all')
 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def s(self):
+        d = self.to_dict()
+        d['referencers'] = [ref.referenced_id for ref in self.referencers]
+        return d
 
 
 @whooshee.register_model('description')
@@ -203,6 +209,18 @@ class Collection(db.Model):
                                  cascade='all')
 
     deleted = db.Column(db.Boolean, default=False)
+
+    def ref(self, resources):
+        cur_res = set([
+            ref.id
+            for ref in Reference.query.filter_by(referencer_id=self.id).all()
+        ])
+        new_res = set(resources)
+        self.referenceds.filter(Resource.id.in_(cur_res - new_res)).delete(
+            synchronize_session=False)
+        for id in new_res - cur_res:
+            ref = Reference(referenced_id=id, referencer_id=self.id)
+            db.session.add(ref)
 
 
 class Certify(db.Model):

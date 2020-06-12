@@ -36,7 +36,6 @@ class BaseTestCase(unittest.TestCase):
         root_domain()
         resource_type()
         media_type()
-        
 
     def tearDown(self):
         db.drop_all()

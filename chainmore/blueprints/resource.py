@@ -56,14 +56,11 @@ class ResourceInstance(RestfulResource):
         db.session.commit()
 
     @jwt_required
-    def put(self):
+    def delete(self):
         id = request.args.get('id')
         r = Resource.query.get_or_404(id)
-        if current_user.is_admin:
-            db.session.delete(r)
-            return response('OK', items=[r.s])
-        else:
-            return response('METHOD_NOT_ALLOWED')
+        db.session.delete(r)
+        return response('OK', items=[r.s])
 
 
 class MediaTypeInstance(RestfulResource):

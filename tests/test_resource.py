@@ -36,3 +36,8 @@ class ResourceTestCase(BaseTestCase):
         self.OK(response)
         data = response.get_json()
         self.assertEqual(data['items'][0]['title'], 'HTML入门资料')
+        self.assertEqual(len(data['items'][0]['referencers']), 0)
+
+        response = self.delete('/v1/resource',
+                               query_string=dict(id=resource_id))
+        self.OK(response)
