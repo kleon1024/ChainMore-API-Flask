@@ -83,3 +83,4 @@ class BaseTestCase(unittest.TestCase):
         if response.status_code != 200:
             print(response)
         self.assertEqual(data["code"], 20000)
+        return data

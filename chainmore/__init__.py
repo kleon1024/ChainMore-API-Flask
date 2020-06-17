@@ -11,9 +11,10 @@ from flask import Flask
 from collections import OrderedDict
 
 from .blueprints.auth import auth_bp
-# from .blueprints.domain import domain_bp
+from .blueprints.domain import domain_bp
 # from .blueprints.comment import comment_bp
 # from .blueprints.sparkle import sparkle_bp
+from .blueprints.roadmap import roadmap_bp
 from .blueprints.collection import collection_bp
 from .blueprints.user import user_bp
 from .blueprints.resource import resource_bp
@@ -49,7 +50,8 @@ def register_extensions(app):
 
 def register_blueprints(app):
     app.register_blueprint(auth_bp, url_prefix='/v1/auth')
-    # app.register_blueprint(domain_bp, url_prefix='/v1/domain')
+    app.register_blueprint(domain_bp, url_prefix='/v1/domain')
+    app.register_blueprint(roadmap_bp, url_prefix='/v1/roadmap')
     # app.register_blueprint(comment_bp, url_prefix='/v1/comment')
     app.register_blueprint(collection_bp, url_prefix='/v1/collection')
     # app.register_blueprint(sparkle_bp, url_prefix='/v1/sparkle')
@@ -77,11 +79,12 @@ def register_commands(app):
         """Initialize data"""
         click.echo('Initializing data...')
 
-        from .initialize import (admin, root_domain, super_domain,
-                                 admin_clear_root_certification)
+        from .initialize import (admin, root_domain)
 
         click.echo('Creating admin...')
         admin()
+        click.echo('Creating root domain...')
+        root_domain()
 
         click.echo('Done')
 

@@ -9,17 +9,17 @@ from faker import Faker
 from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
-from .models import (User, Domain, ResourceType, MediaType, Role)
+from .models import (User, Domain, Depend, Aggregate, ResourceType, MediaType,
+                     Role)
 from .utils import (exist_username, exist_email, exist_nickname, exist_domain)
 
 fake = Faker(locale='zh_CN')
 
 
 def admin():
-    admin = User(nickname='柯力卬Kleon',
+    admin = User(nickname='Kleon',
                  username='kleon',
                  email='dingli.cm@gmail.com',
-                 root_certified=False,
                  bio='阡陌 - 连接更多')
 
     admin.set_password('hellokleon')
@@ -32,8 +32,18 @@ def admin():
 def root_domain():
     admin = User.query.filter_by(username='kleon').first()
     domain = Domain(title="阡陌", creator=admin)
-
     db.session.add(domain)
+    db.session.commit()
+
+    domain.certify(User.query.filter_by(username='kleon').first())
+
+    depend = Depend(ancestor_id=domain.id, descendant_id=domain.id, distance=0)
+    aggregate = Aggregate(ancestor_id=domain.id,
+                          descendant_id=domain.id,
+                          distance=0)
+
+    db.session.add(depend)
+    db.session.add(aggregate)
     db.session.commit()
 
 

@@ -41,3 +41,4 @@ class ResourceTestCase(BaseTestCase):
         response = self.delete('/v1/resource',
                                query_string=dict(id=resource_id))
         self.OK(response)
+        self.logout()

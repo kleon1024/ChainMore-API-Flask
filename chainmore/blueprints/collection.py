@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Collection, Comment, Category, Domain, Emoji, RoadMap)
+from ..models import (Collection, Domain)
 from ..extensions import db
 
 collection_bp = Blueprint('collection', __name__)
@@ -25,16 +25,18 @@ class CollectionInstance(Resource):
     def post(self):
         data = request.get_json()
 
-        kwargs = {}
-        kwargs['title'] = data['title']
-        kwargs['intro'] = data.get('intro', '')
-        kwargs['author_id'] = current_user.id
-        kwargs['domain_id'] = data['domainId']
+        kwargs = dict(
+            title=data['title'],
+            description=data['description'],
+            author_id=current_user.id,
+            domain_id=data['domainId'],
+        )
 
         resources = data['resources']
 
         r = Collection(**kwargs)
         db.session.add(r)
+        db.session.commit()
 
         r.ref(resources)
 
@@ -46,20 +48,23 @@ class CollectionInstance(Resource):
         data = request.get_json()
 
         r = Collection.query.get_or_404(data['id'])
+        assert (r.author_id == current_user.id)
         r.title = data['title']
-        r.url = data.get('intro')
+        r.description = data['description']
         r.domain_id = data['domainId']
 
         resources = data['resources']
         r.ref(resources)
 
         db.session.commit()
+        return response('OK', items=[r.s])
 
     @jwt_required
     def delete(self):
         id = request.args.get('id')
         r = Resource.query.get_or_404(id)
-        db.session.delete(r)
+        assert (r.author_id == current_user.id)
+        r.deleted = True
         return response('OK', items=[r.s])
 
 

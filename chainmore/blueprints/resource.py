@@ -27,13 +27,15 @@ class ResourceInstance(RestfulResource):
     def post(self):
         data = request.get_json()
 
-        kwargs = {}
-        kwargs['title'] = data['title']
-        kwargs['url'] = data['url']
-        kwargs['external'] = data['external']
-        kwargs['free'] = data['free']
-        kwargs['resource_type_id'] = data['resourceTypeId']
-        kwargs['media_type_id'] = data['mediaTypeId']
+        kwargs = dict(
+            title=data['title'],
+            url=data['url'],
+            external=data['external'],
+            free=data['free'],
+            resource_type_id=data['resourceTypeId'],
+            media_type_id=data['mediaTypeId'],
+            author_id=current_user.id,
+        )
 
         r = Resource(**kwargs)
 
@@ -46,6 +48,8 @@ class ResourceInstance(RestfulResource):
         data = request.get_json()
 
         r = Resource.query.get_or_404(data['id'])
+        assert (r.author_id == current_user.id)
+
         r.title = data['title']
         r.url = data['url']
         r.external = data['external']
@@ -59,7 +63,8 @@ class ResourceInstance(RestfulResource):
     def delete(self):
         id = request.args.get('id')
         r = Resource.query.get_or_404(id)
-        db.session.delete(r)
+        assert (r.author_id == current_user.id)
+        r.deleted = True
         return response('OK', items=[r.s])
 
 
@@ -97,7 +102,7 @@ class MediaTypeInstance(RestfulResource):
 
     @jwt_required
     @admin_required
-    def put(self):
+    def delete(self):
         id = request.args.get('id')
         r = MediaType.query.get_or_404(id)
         db.session.delete(r)
@@ -138,7 +143,7 @@ class ResourceTypeInstance(RestfulResource):
 
     @jwt_required
     @admin_required
-    def put(self):
+    def delete(self):
         id = request.args.get('id')
         r = ResourceType.query.get_or_404(id)
         db.session.delete(r)

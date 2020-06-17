@@ -9,6 +9,8 @@ from werkzeug.security import (generate_password_hash, check_password_hash)
 
 from .extensions import db, whooshee
 
+import json
+
 
 def to_dict(self):
     return {
@@ -129,7 +131,7 @@ class Resource(db.Model):
     title = db.Column(db.String)
 
     # resource router
-    url = db.Column(db.String, unique=True)
+    url = db.Column(db.String)
 
     # External resource with third-party url, which is considered as from web.
     # If this is declared as False, the resource must be declared as original.
@@ -151,12 +153,18 @@ class Resource(db.Model):
                                   lazy='dynamic',
                                   cascade='all')
 
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    author = db.relationship('User', back_populates='resources')
+
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    deleted = db.Column(db.Boolean, default=False)
 
     @property
     def s(self):
         d = self.to_dict()
         d['referencers'] = [ref.referenced_id for ref in self.referencers]
+        d['author'] = self.author.s
         return d
 
 
@@ -169,6 +177,7 @@ class Reference(db.Model):
                               db.ForeignKey('collection.id'),
                               primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    order = db.Column(db.Integer)
     referenced = db.relationship('Resource',
                                  foreign_keys=[referenced_id],
                                  back_populates='referencers',
@@ -181,11 +190,11 @@ class Reference(db.Model):
 
 
 # Resource Collection
-@whooshee.register_model('title', 'intro')
+@whooshee.register_model('title', 'description')
 class Collection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
-    intro = db.Column(db.Text)
+    description = db.Column(db.Text)
 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -211,16 +220,25 @@ class Collection(db.Model):
     deleted = db.Column(db.Boolean, default=False)
 
     def ref(self, resources):
-        cur_res = set([
-            ref.id
-            for ref in Reference.query.filter_by(referencer_id=self.id).all()
-        ])
-        new_res = set(resources)
-        self.referenceds.filter(Resource.id.in_(cur_res - new_res)).delete(
-            synchronize_session=False)
-        for id in new_res - cur_res:
-            ref = Reference(referenced_id=id, referencer_id=self.id)
+        cur_res = Reference.query.filter_by(referencer_id=self.id).all()
+
+        new_res = []
+
+        for res in cur_res:
+            db.session.delete(res)
+        for res_id in resources:
+            if res_id in new_res:
+                continue
+            new_res.append(res_id)
+            res = Resource.query.get_or_404(res_id)
+            ref = Reference(referenced_id=res.id, referencer_id=self.id)
             db.session.add(ref)
+
+    @property
+    def s(self):
+        d = self.to_dict()
+        d['referenceds'] = [ref.referenced.s for ref in self.referenceds.all()]
+        return d
 
 
 class Certify(db.Model):
@@ -249,15 +267,22 @@ class Aggregate(db.Model):
                               db.ForeignKey('domain.id'),
                               primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    ancestor = db.relationship('Domain',
-                               foreign_keys=[ancestor_id],
-                               back_populates='aggregateds',
-                               lazy='joined')
     descendant = db.relationship('Domain',
                                  foreign_keys=[descendant_id],
-                                 back_populates='aggregators',
+                                 back_populates='aggregateds',
                                  lazy='joined')
+    ancestor = db.relationship('Domain',
+                               foreign_keys=[ancestor_id],
+                               back_populates='aggregators',
+                               lazy='joined')
     distance = db.Column(db.Integer)
+
+    @property
+    def s(self):
+        d = self.to_dict()
+        d['ancestor'] = self.ancestor.s
+        d['descendant'] = self.descendant.s
+        return d
 
 
 class Depend(db.Model):
@@ -268,15 +293,22 @@ class Depend(db.Model):
                               db.ForeignKey('domain.id'),
                               primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    ancestor = db.relationship('Domain',
-                               foreign_keys=[ancestor_id],
-                               back_populates='dependants',
-                               lazy='joined')
     descendant = db.relationship('Domain',
                                  foreign_keys=[descendant_id],
-                                 back_populates='dependeds',
+                                 back_populates='dependants',
                                  lazy='joined')
+    ancestor = db.relationship('Domain',
+                               foreign_keys=[ancestor_id],
+                               back_populates='dependeds',
+                               lazy='joined')
     distance = db.Column(db.Integer)
+
+    @property
+    def s(self):
+        d = self.to_dict()
+        d['ancestor'] = self.ancestor.s
+        d['descendant'] = self.descendant.s
+        return d
 
 
 class Follow(db.Model):
@@ -376,11 +408,12 @@ class User(db.Model):
     receive_follow_notification = db.Column(db.Boolean, default=True)
     receive_collect_notification = db.Column(db.Boolean, default=True)
 
-    root_certified = db.Column(db.Boolean)
-
     collections = db.relationship('Collection',
                                   back_populates='author',
                                   cascade='all')
+    resources = db.relationship('Resource',
+                                back_populates='author',
+                                cascade='all')
     roadmaps = db.relationship('Roadmap',
                                back_populates='creator',
                                cascade='all')
@@ -609,7 +642,7 @@ class User(db.Model):
 
 class RoadmapNode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    order = db.Column(db.Integer)
+    order = db.Column(db.Integer, default=0)
 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -632,6 +665,16 @@ class RoadmapNode(db.Model):
                               back_populates='nodes')
 
     description = db.Column(db.Text)
+
+    @property
+    def s(self):
+        d = self.to_dict()
+        if self.node_roadmap:
+            d['nodeRoadmap'] = self.node_roadmap.s
+        if self.node_domain:
+            d['nodeDomain'] = self.node_domain.s
+
+        return d
 
 
 class Learn(db.Model):
@@ -678,12 +721,46 @@ class Roadmap(db.Model):
                             foreign_keys=[RoadmapNode.roadmap_id],
                             back_populates='roadmap')
 
+    def update(self, nodes):
+        for node in self.nodes:
+            db.session.delete(node)
+
+        new_nodes = []
+
+        for node in nodes:
+            key = node['type'] + node['id']
+            if key in new_nodes:
+                continue
+
+            new_nodes.append(key)
+            kwargs = dict(type=node['type'],
+                          roadmap_id=self.id,
+                          description=node['description'])
+            if node['type'] == 'domain':
+                domain = Domain.query.get_or_404(node['id'])
+                rn = RoadmapNode(node_domain_id=domain.id, **kwargs)
+            elif node['type'] == 'roadmap':
+                roadmap = Roadmap.query.get_or_404(node['id'])
+                rn = RoadmapNode(node_roadmap_id=roadmap.id, **kwargs)
+            db.session.add(rn)
+
+    @property
+    def s(self):
+        d = self.to_dict()
+        for node in self.nodes:
+            print(node)
+        d['nodes'] = [node.s for node in self.nodes]
+        return d
+
 
 @whooshee.register_model('title', 'intro')
 class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String, unique=True)
     intro = db.Column(db.String)
+
+    deleting = db.Column(db.Boolean, default=False)
+    deleted = db.Column(db.Boolean, default=False)
 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -712,25 +789,25 @@ class Domain(db.Model):
                                  cascade='all')
 
     aggregateds = db.relationship('Aggregate',
-                                  foreign_keys=[Aggregate.ancestor_id],
+                                  foreign_keys=[Aggregate.descendant_id],
                                   back_populates='descendant',
                                   lazy='dynamic',
                                   cascade='all')
 
     aggregators = db.relationship('Aggregate',
-                                  foreign_keys=[Aggregate.descendant_id],
+                                  foreign_keys=[Aggregate.ancestor_id],
                                   back_populates='ancestor',
                                   lazy='dynamic',
                                   cascade='all')
 
     dependants = db.relationship('Depend',
-                                 foreign_keys=[Depend.ancestor_id],
+                                 foreign_keys=[Depend.descendant_id],
                                  back_populates='descendant',
                                  lazy='dynamic',
                                  cascade='all')
 
     dependeds = db.relationship('Depend',
-                                foreign_keys=[Depend.descendant_id],
+                                foreign_keys=[Depend.ancestor_id],
                                 back_populates='ancestor',
                                 lazy='dynamic',
                                 cascade='all')
@@ -752,6 +829,30 @@ class Domain(db.Model):
             return False
         return self.certifiers.filter_by(
             certifier_id=user.id).first() is not None
+
+    def dep(self, dependant):
+        for depended in Depend.query.filter(
+                Depend.descendant_id == self.id).all():
+            db.session.add(
+                Depend(ancestor_id=depended.ancestor_id,
+                       descendant_id=dependant.id,
+                       distance=depended.distance + 1))
+        db.session.add(
+            Depend(ancestor_id=dependant.id,
+                   descendant_id=dependant.id,
+                   distance=0))
+
+    def agg(self, aggregated):
+        for aggregator in Aggregate.query.filter(
+                Aggregate.descendant_id == self.id):
+            db.session.add(
+                Aggregate(ancestor_id=aggregator.ancestor_id,
+                          descendant_id=aggregated.id,
+                          distance=aggregator.distance + 1))
+        db.session.add(
+            Aggregate(ancestor_id=aggregated.id,
+                      descendant_id=aggregated.id,
+                      distance=0))
 
 
 # @whooshee.register_model('body')

@@ -58,12 +58,8 @@ class SignUp(Resource):
             return response("USERNAME_EXIST", msg="Username Exist")
 
         if nickname == "":
-            nickname = "探索者" + username + str(int(time.time() % 1000000000))
-        user = User(nickname=nickname,
-                    email=email,
-                    username=username,
-                    root_certified=False,
-                    bio="")
+            nickname = "探索者" + username + str(int(time.time() % 100000000))
+        user = User(nickname=nickname, email=email, username=username, bio="")
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
