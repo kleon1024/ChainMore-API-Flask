@@ -70,7 +70,7 @@ class DomainInstance(Resource):
         old_dependeds = set(
             [dep.id for dep in r.dependeds.filter_by(distance=1).all()])
         r.dependeds.filter(
-            Depend.descendant_id._in(old_dependeds - new_dependeds)).delete(
+            Depend.descendant_id.in_(old_dependeds - new_dependeds)).delete(
                 synchronize_session=False)
         for depended in new_dependeds - old_dependeds:
             depended = Domain.query.get_or_404(depended)
@@ -80,7 +80,7 @@ class DomainInstance(Resource):
         old_aggregators = set(
             [agg.id for agg in r.aggregators.filter_by(distance=1).all()])
         r.aggregators.filter(
-            Aggregate.descendant_id._in(old_aggregators -
+            Aggregate.descendant_id.in_(old_aggregators -
                                         new_aggregators)).delete(
                                             synchronize_session=False)
         for aggregator in new_aggregators - old_aggregators:
@@ -246,9 +246,11 @@ class DomainDependeds(Resource):
         distances = request.args.get('distances', [0, 999999])
         domain = Domain.query.get_or_404(id)
         rs = [
-            dep.s for dep in Depend.query.filter(
-                Depend.descendant_id == domain.id, Depend.distance >=
-                distances[0], Depend.distance <= distances[1]).all()
+            dep.s
+            for dep in Depend.query.filter(Depend.descendant_id == domain.id,
+                                           Depend.distance >= distances[0],
+                                           Depend.distance <= distances[1]).
+            order_by(Depend.distance.desc()).all()
         ]
         return response('OK', items=rs)
 
@@ -261,9 +263,32 @@ class DomainDependants(Resource):
         distances = request.args.get('distances', [0, 999999])
         domain = Domain.query.get_or_404(id)
         rs = [
-            dep.s for dep in Depend.query.filter(
-                Depend.ancestor_id == domain.id, Depend.distance >=
-                distances[0], Depend.distance <= distances[1]).all()
+            dep.s
+            for dep in Depend.query.filter(Depend.ancestor_id == domain.id,
+                                           Depend.distance >= distances[0],
+                                           Depend.distance <= distances[1]).
+            order_by(Depend.distance.asc()).all()
+        ]
+        return response('OK', items=rs)
+
+
+class DomainDepends(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        domain = Domain.query.get_or_404(id)
+        exist_ids = [
+            certify.certified_id for certify in current_user.certifieds
+        ]
+        exclude_domains = set([
+            dep.ancestor_id for dep in Depend.query.filter(
+                Depend.descendant_id.in_(exist_ids)).all()
+        ])
+
+        rs = [
+            dep.ancestor.s for dep in Depend.query.filter(
+                Depend.descendant_id == domain.id, ~Depend.ancestor_id.in_(
+                    exclude_domains)).order_by(Depend.distance.desc()).all()
         ]
         return response('OK', items=rs)
 
@@ -351,5 +376,7 @@ api.add_resource(DomainAggregators, '/aggregators')
 api.add_resource(DomainAggregateds, '/aggregateds')
 api.add_resource(DomainDependeds, '/dependeds')
 api.add_resource(DomainDependants, '/dependants')
+
+api.add_resource(DomainDepends, '/depends')
 # api.add_resource(RoadMapInstance, '/roadmap')
 # api.add_resource(RoadMapLearn, '/roadmap/learn')

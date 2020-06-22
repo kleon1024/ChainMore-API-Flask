@@ -100,6 +100,32 @@ class DomainTestCase(BaseTestCase):
 
         self.logout()
 
+    def test_gen_depends_domain(self):
+        self.login()
+        # Root
+        # |  |
+        # a0 a1
+        #
+        response = self.post('/v1/domain',
+                             json=dict(title='Dep0',
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        a0_id = data['items'][0]['id']
+        response = self.post('/v1/domain',
+                             json=dict(title='Dep1',
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        a1_id = data['items'][0]['id']
+
+        response = self.get('/v1/domain/depends',
+                            query_string=dict(id=a1_id))
+        data = self.OK(response)
+        self.assertEqual(len(data['items']), 1)
+        for item in data['items']:
+            self.assertEqual(item['id'], a1_id)
+
     # def test_put_domain(self):
     #     self.login()
     #     response = self.post('/v1/domain',

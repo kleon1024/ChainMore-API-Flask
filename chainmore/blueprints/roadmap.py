@@ -22,7 +22,6 @@ class RoadmapInstance(Resource):
         r = Roadmap.query.get_or_404(id)
         return response('OK', items=[r.s])
 
-    # Cost: 5
     @jwt_required
     def post(self):
         data = request.get_json()
@@ -45,40 +44,17 @@ class RoadmapInstance(Resource):
 
         return response('OK', items=[r.s])
 
-    # Cost: 10
     @jwt_required
     def put(self):
         r = Collection.query.get_or_404(data['id'])
         r.title = data['title']
-        r.intro = data.get('intro', '')
+        r.intro = data['intro']
+        r.description = data['description']
 
-        new_dependeds = set(data['dependeds'])
-        assert (len(new_dependeds) > 0)
+        nodes = data['nodes']
+        assert (isinstance(nodes, (list, tuple)))
 
-        new_aggregators = set(data['aggregators'])
-        assert (len(new_aggregators) == 1)
-
-        old_dependeds = set(
-            [dep.id for dep in r.dependeds.filter_by(distance=1).all()])
-        r.dependeds.filter(
-            Depend.descendant_id._in(old_dependeds - new_dependeds)).delete(
-                synchronize_session=False)
-        for depended in new_dependeds - old_dependeds:
-            depended = Roadmap.query.get_or_404(depended)
-            assert (depended.is_certified(current_user))
-            depended.dep(r)
-
-        old_aggregators = set(
-            [agg.id for agg in r.aggregators.filter_by(distance=1).all()])
-        r.aggregators.filter(
-            Aggregate.descendant_id._in(old_aggregators -
-                                        new_aggregators)).delete(
-                                            synchronize_session=False)
-        for aggregator in new_aggregators - old_aggregators:
-            aggregator = Roadmap.query.get_or_404(aggregator)
-            assert (aggregator.is_certified(current_user))
-            aggregator.agg(r)
-
+        r.update(nodes)
         db.session.commit()
         return response('OK', items=[r.s])
 

@@ -444,15 +444,23 @@ class User(db.Model):
                                back_populates='watcher',
                                lazy='dynamic',
                                cascade='all')
-    learnings = db.relationship('Learn',
-                                back_populates='learner',
-                                lazy='dynamic',
-                                cascade='all')
+
+    target_domains = db.relationship('TargetDomain',
+                                     back_populates='learner',
+                                     lazy='dynamic',
+                                     cascade='all')
+
+    target_roadmaps = db.relationship('TargetRoadmap',
+                                      back_populates='learner',
+                                      lazy='dynamic',
+                                      cascade='all')
+
     followings = db.relationship('Follow',
                                  foreign_keys=[Follow.follower_id],
                                  back_populates='follower',
                                  lazy='dynamic',
                                  cascade='all')
+
     followers = db.relationship('Follow',
                                 foreign_keys=[Follow.followed_id],
                                 back_populates='followed',
@@ -622,22 +630,43 @@ class User(db.Model):
         return Watch.query.with_parent(self).filter_by(
             watched_id=post.id).first() is not None
 
-    def learn(self, roadmap):
-        if not self.is_learning(roadmap):
-            learn = Learn(learner=self, learning=roadmap)
+    def learn_roadmap(self, roadmap):
+        roadmap = Roadmap.query.get_or_404(roadmap)
+        if not self.is_learning_roadmap(roadmap):
+            learn = TargetRoadmap(learner=self, learning=roadmap)
             db.session.add(learn)
             db.session.commit()
 
-    def unlearn(self, roadmap):
-        learn = Learn.query.with_parent(self).filter_by(
+    def unlearn_roadmap(self, roadmap):
+        roadmap = Roadmap.query.get_or_404(roadmap)
+        learn = TargetRoadmap.query.with_parent(self).filter_by(
             learning_id=roadmap.id).first()
         if learn:
             db.session.delete(learn)
             db.session.commit()
 
-    def is_learning(self, roadmap):
-        return Learn.query.with_parent(self).filter_by(
+    def is_learning_roadmap(self, roadmap):
+        return TargetRoadmap.query.with_parent(self).filter_by(
             learning_id=roadmap.id).first() is not None
+
+    def learn_domain(self, domain):
+        domain = Domain.query.get_or_404(domain)
+        if not self.is_learning_domain(domain):
+            learn = TargetDomain(learner=self, learning=domain)
+            db.session.add(learn)
+            db.session.commit()
+
+    def unlearn_domain(self, domain):
+        domain = Domain.query.get_or_404(domain)
+        learn = TargetDomain.query.with_parent(self).filter_by(
+            learning_id=domain.id).first()
+        if learn:
+            db.session.delete(learn)
+            db.session.commit()
+
+    def is_learning_domain(self, domain):
+        return TargetDomain.query.with_parent(self).filter_by(
+            learning_id=domain.id).first() is not None
 
 
 class RoadmapNode(db.Model):
@@ -677,7 +706,7 @@ class RoadmapNode(db.Model):
         return d
 
 
-class Learn(db.Model):
+class TargetRoadmap(db.Model):
     learner_id = db.Column(db.Integer,
                            db.ForeignKey('user.id'),
                            primary_key=True)
@@ -686,13 +715,31 @@ class Learn(db.Model):
                             primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     learner = db.relationship('User',
-                              back_populates='learnings',
+                              back_populates='target_roadmaps',
                               lazy='joined')
     learning = db.relationship('Roadmap',
                                back_populates='learners',
                                lazy='joined')
-
     learned = db.Column(db.Boolean, default=False)
+    deleted = db.Column(db.Boolean, default=False)
+
+
+class TargetDomain(db.Model):
+    learner_id = db.Column(db.Integer,
+                           db.ForeignKey('user.id'),
+                           primary_key=True)
+    learning_id = db.Column(db.Integer,
+                            db.ForeignKey('domain.id'),
+                            primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    learner = db.relationship('User',
+                              back_populates='target_domains',
+                              lazy='joined')
+    learning = db.relationship('Domain',
+                               back_populates='learners',
+                               lazy='joined')
+    learned = db.Column(db.Boolean, default=False)
+    deleted = db.Column(db.Boolean, default=False)
 
 
 @whooshee.register_model('title', 'intro', 'description')
@@ -707,7 +754,7 @@ class Roadmap(db.Model):
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     creator = db.relationship('User', back_populates='roadmaps')
 
-    learners = db.relationship('Learn',
+    learners = db.relationship('TargetRoadmap',
                                back_populates='learning',
                                lazy='dynamic',
                                cascade='all')
@@ -728,7 +775,7 @@ class Roadmap(db.Model):
         new_nodes = []
 
         for node in nodes:
-            key = node['type'] + node['id']
+            key = str(node['type']) + str(node['id'])
             if key in new_nodes:
                 continue
 
@@ -766,6 +813,11 @@ class Domain(db.Model):
 
     creator = db.relationship('User', back_populates='domains')
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    learners = db.relationship('TargetDomain',
+                               back_populates='learning',
+                               lazy='dynamic',
+                               cascade='all')
 
     # Node belongs to roadmap node
     nodes = db.relationship('RoadmapNode',
