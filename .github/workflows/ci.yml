@@ -24,7 +24,7 @@ jobs:
     
     # Install pip packages
     - name: Install Requirements
-      run: pip3 install -r requirements
+      run: pip3 install -r requirements.txt
 
     # Runs a single command using the runners shell
     - name: Run CI Test
