@@ -493,12 +493,7 @@ class User(db.Model):
     #         category_id=category.id).first() is not None
 
     def generate_avatar(self):
-        avatar = Identicon()
-        filenames = avatar.generate(text=self.username)
-        self.avatar_s = filenames[0]
-        self.avatar_m = filenames[1]
-        self.avatar_l = filenames[2]
-        db.session.commit()
+        pass
 
     @property
     def is_admin(self):
@@ -579,56 +574,56 @@ class User(db.Model):
         return Collect.query.with_parent(self).filter_by(
             collected_id=post.id).first() is not None
 
-    def like(self, sparkle):
-        if not self.is_liking(sparkle):
-            like = Like(liker=self, liked=sparkle)
-            db.session.add(like)
-            db.session.commit()
+#     def like(self, sparkle):
+#         if not self.is_liking(sparkle):
+#             like = Like(liker=self, liked=sparkle)
+#             db.session.add(like)
+#             db.session.commit()
 
-    def unlike(self, sparkle):
-        like = Like.query.with_parent(self).filter_by(
-            liked_id=sparkle.id).first()
-        if like:
-            db.session.delete(like)
-            db.session.commit()
+#     def unlike(self, sparkle):
+#         like = Like.query.with_parent(self).filter_by(
+#             liked_id=sparkle.id).first()
+#         if like:
+#             db.session.delete(like)
+#             db.session.commit()
 
     def is_liking(self, sparkle):
         return Like.query.with_parent(self).filter_by(
             liked_id=sparkle.id).first() is not None
 
-    def vote(self, comment):
-        if not self.is_voting(comment):
-            vote = Vote(voter=self, voted=comment)
-            db.session.add(vote)
-            db.session.commit()
+#     def vote(self, comment):
+#         if not self.is_voting(comment):
+#             vote = Vote(voter=self, voted=comment)
+#             db.session.add(vote)
+#             db.session.commit()
 
-    def unvote(self, comment):
-        vote = Vote.query.with_parent(self).filter_by(
-            voted_id=comment.id).first()
-        if vote:
-            db.session.delete(vote)
-            db.session.commit()
+#     def unvote(self, comment):
+#         vote = Vote.query.with_parent(self).filter_by(
+#             voted_id=comment.id).first()
+#         if vote:
+#             db.session.delete(vote)
+#             db.session.commit()
 
-    def is_voting(self, comment):
-        return Vote.query.with_parent(self).filter_by(
-            voted_id=comment.id).first() is not None
+#     def is_voting(self, comment):
+#         return Vote.query.with_parent(self).filter_by(
+#             voted_id=comment.id).first() is not None
 
-    def watch(self, post):
-        if not self.is_watching(post):
-            watch = Watch(watcher=self, watched=post)
-            db.session.add(watch)
-            db.session.commit()
+#     def watch(self, post):
+#         if not self.is_watching(post):
+#             watch = Watch(watcher=self, watched=post)
+#             db.session.add(watch)
+#             db.session.commit()
 
-    def unwatch(self, post):
-        watch = Watch.query.with_parent(self).filter_by(
-            watched_id=post.id).first()
-        if watch:
-            db.session.delete(watch)
-            db.session.commit()
+#     def unwatch(self, post):
+#         watch = Watch.query.with_parent(self).filter_by(
+#             watched_id=post.id).first()
+#         if watch:
+#             db.session.delete(watch)
+#             db.session.commit()
 
-    def is_watching(self, post):
-        return Watch.query.with_parent(self).filter_by(
-            watched_id=post.id).first() is not None
+#     def is_watching(self, post):
+#         return Watch.query.with_parent(self).filter_by(
+#             watched_id=post.id).first() is not None
 
     def learn_roadmap(self, roadmap):
         roadmap = Roadmap.query.get_or_404(roadmap)
