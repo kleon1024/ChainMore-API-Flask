@@ -156,15 +156,17 @@ class Resource(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     author = db.relationship('User', back_populates='resources')
 
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
 
     deleted = db.Column(db.Boolean, default=False)
 
     @property
     def s(self):
-        d = self.to_dict()
-        d['referencers'] = [ref.referenced_id for ref in self.referencers]
-        d['author'] = self.author.s
+        if self.deleted:
+            d ={'id' : self.id, 'deleted': self.deleted}
+        else:
+            d = self.to_dict()
         return d
 
 

@@ -32,8 +32,8 @@ class ResourceInstance(RestfulResource):
             url=data['url'],
             external=data['external'],
             free=data['free'],
-            resource_type_id=data['resourceTypeId'],
-            media_type_id=data['mediaTypeId'],
+            resource_type_id=data['resource_type_id'],
+            media_type_id=data['media_type_id'],
             author_id=current_user.id,
         )
 
@@ -54,8 +54,8 @@ class ResourceInstance(RestfulResource):
         r.url = data['url']
         r.external = data['external']
         r.free = data['free']
-        r.resource_type_id = data['resourceTypeId']
-        r.media_type_id = data['mediaTypeId']
+        r.resource_type_id = data['resource_type_id']
+        r.media_type_id = data['media_type_id']
 
         db.session.commit()
 

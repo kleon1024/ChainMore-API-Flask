@@ -29,7 +29,7 @@ class CollectionInstance(Resource):
             title=data['title'],
             description=data['description'],
             author_id=current_user.id,
-            domain_id=data['domainId'],
+            domain_id=data['domain_id'],
         )
 
         resources = data['resources']
@@ -51,7 +51,7 @@ class CollectionInstance(Resource):
         assert (r.author_id == current_user.id)
         r.title = data['title']
         r.description = data['description']
-        r.domain_id = data['domainId']
+        r.domain_id = data['domain_id']
 
         resources = data['resources']
         r.ref(resources)

@@ -23,8 +23,8 @@ class CollectionTestCase(BaseTestCase):
                                        url='https://github.com',
                                        external=True,
                                        free=True,
-                                       resourceTypeId=resource_type_id,
-                                       mediaTypeId=media_type_id))
+                                       resource_type_id=resource_type_id,
+                                       media_type_id=media_type_id))
         data = self.OK(response)
         resource_id = data['items'][0]['id']
 
@@ -32,7 +32,7 @@ class CollectionTestCase(BaseTestCase):
                              json=dict(
                                  title='HTML Beginner\'s Compilation',
                                  description='Not ready',
-                                 domainId=1,
+                                 domain_id=1,
                                  resources=[resource_id],
                              ))
         data = self.OK(response)
@@ -59,8 +59,8 @@ class CollectionTestCase(BaseTestCase):
                                        url='https://github.com',
                                        external=True,
                                        free=True,
-                                       resourceTypeId=resource_type_id,
-                                       mediaTypeId=media_type_id))
+                                       resource_type_id=resource_type_id,
+                                       media_type_id=media_type_id))
         data = self.OK(response)
         resource_id = data['items'][0]['id']
 
@@ -69,7 +69,7 @@ class CollectionTestCase(BaseTestCase):
             json=dict(
                 title='HTML Beginner\'s Compilation',
                 description='Not ready',
-                domainId=1,
+                domain_id=1,
                 resources=[resource_id, resource_id, resource_id],
             ))
         data = self.OK(response)
@@ -98,8 +98,8 @@ class CollectionTestCase(BaseTestCase):
                                        url='https://github.com',
                                        external=True,
                                        free=True,
-                                       resourceTypeId=resource_type_id,
-                                       mediaTypeId=media_type_id))
+                                       resource_type_id=resource_type_id,
+                                       media_type_id=media_type_id))
         data = self.OK(response)
         resource_id = data['items'][0]['id']
 
@@ -108,8 +108,8 @@ class CollectionTestCase(BaseTestCase):
                                        url='https://github.com',
                                        external=True,
                                        free=True,
-                                       resourceTypeId=resource_type_id,
-                                       mediaTypeId=media_type_id))
+                                       resource_type_id=resource_type_id,
+                                       media_type_id=media_type_id))
         data = self.OK(response)
         resource2_id = data['items'][0]['id']
 
@@ -118,8 +118,8 @@ class CollectionTestCase(BaseTestCase):
                                        url='https://github.com',
                                        external=True,
                                        free=True,
-                                       resourceTypeId=resource_type_id,
-                                       mediaTypeId=media_type_id))
+                                       resource_type_id=resource_type_id,
+                                       media_type_id=media_type_id))
         data = self.OK(response)
         resource3_id = data['items'][0]['id']
 
@@ -127,7 +127,7 @@ class CollectionTestCase(BaseTestCase):
                              json=dict(
                                  title='HTML Beginner\'s Compilation',
                                  description='Not ready',
-                                 domainId=1,
+                                 domain_id=1,
                                  resources=[resource_id, resource2_id],
                              ))
         data = self.OK(response)
@@ -142,7 +142,7 @@ class CollectionTestCase(BaseTestCase):
                                 id=collection_id,
                                 title='HTML Beginner\'s Compilation',
                                 description='Not ready',
-                                domainId=1,
+                                domain_id=1,
                                 resources=[resource3_id, resource2_id],
                             ))
         data = self.OK(response)
