@@ -99,13 +99,44 @@ class Permission(db.Model):
     def __repr__(self):
         return '<Permission %r>' % self.name
 
+class Classify(db.Model):
+    classified_id = db.Column(db.Integer,
+                              db.ForeignKey('media_type.id'),
+                              primary_key=True)
+    classifier_id = db.Column(db.Integer,
+                              db.ForeignKey('resource_type.id'),
+                              primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    classified = db.relationship('MediaType',
+                                 foreign_keys=[classified_id],
+                                 back_populates='classifiers',
+                                 lazy='joined')
+    classifier = db.relationship('ResourceType',
+                                 foreign_keys=[classifier_id],
+                                 back_populates='classifieds',
+                                 lazy='joined')
+
+    @property
+    def s():
+        d = {}
+        d['resource_id'] = self.classifier_id
+        d['resource_name'] = self.classifier.name
+        d['media_id'] = self.classified_id
+        d['media_name'] = self.classified.name
+        return d
+    
 
 class MediaType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
-    # Media Type: Article/Video/Audio/Image/VR/AR/offline/book/e-book
+    # Media Type: Article/Video/Audio/Image/VR/AR/offline
     name = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='media_type')
+
+    classifiers = db.relationship('ResourceType',
+                                  back_populates='classified',
+                                  lazy='dynamic',
+                                  cascade='all')
 
     def __repr__(self):
         return '<MediaType %r>' % self.name
@@ -116,9 +147,14 @@ class ResourceType(db.Model):
 
     # Resource Type:
     # Internal: QA/Tutorial/Experience/Project/Record/Example/Quiz/Problem
-    # External: Quora/Blog/Podcast
+    # External: Quora/Blog/Podcast/Course/Book/Music/Movie
     name = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='resource_type')
+
+    classifieds = db.relationship('MediaType',
+                                  back_populates='classifier',
+                                  lazy='dynamic',
+                                  cascade='all')
 
     def __repr__(self):
         return '<ResourceType %r>' % self.name

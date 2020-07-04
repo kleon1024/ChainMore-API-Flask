@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
 from .models import (User, Domain, Depend, Aggregate, ResourceType, MediaType,
-                     Role)
+                     Role, Classify)
 from .utils import (exist_username, exist_email, exist_nickname, exist_domain)
 
 fake = Faker(locale='zh_CN')
@@ -47,15 +47,43 @@ def root_domain():
     db.session.commit()
 
 
-def resource_type():
-    r = ResourceType(name="article")
-    db.session.add(r)
+def resource_media_type():
+    article = ResourceType(name="article")
+    course = ResourceType(name="course")
+    book = ResourceType(name="book")
+
+    
+    text = MediaType(name="text")
+    image = MediaType(name="image")
+    audio = MediaType(name="audio")
+    video = MediaType(name="video")
+
+    db.session.add(article)
+    db.session.add(course)
+    db.session.add(book)
+    db.session.add(podcast)
+    db.session.add(text)
+    db.session.add(image)
+    db.session.add(audio)
+    db.session.add(video)
+
     db.session.commit()
 
+    db.session.add(Classify(classifier_id=article.id, classified_id=text.id))
+    db.session.add(Classify(classifier_id=article.id, classified_id=image.id))
+    db.session.add(Classify(classifier_id=article.id, classified_id=audio.id))
+    db.session.add(Classify(classifier_id=article.id, classified_id=video.id))
 
-def media_type():
-    m = MediaType(name="text")
-    db.session.add(m)
+    db.session.add(Classify(classifier_id=course.id, classified_id=text.id))
+    db.session.add(Classify(classifier_id=course.id, classified_id=image.id))
+    db.session.add(Classify(classifier_id=course.id, classified_id=audio.id))
+    db.session.add(Classify(classifier_id=course.id, classified_id=video.id))
+
+    db.session.add(Classify(classifier_id=book.id, classified_id=text.id))
+    db.session.add(Classify(classifier_id=book.id, classified_id=image.id))
+    db.session.add(Classify(classifier_id=book.id, classified_id=audio.id))
+    db.session.add(Classify(classifier_id=book.id, classified_id=video.id))    
+
     db.session.commit()
 
 

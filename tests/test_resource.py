@@ -37,3 +37,7 @@ class ResourceTestCase(BaseTestCase):
                                query_string=dict(id=resource_id))
         self.OK(response)
         self.logout()
+
+    def test_get_resource_media_type(self):
+        pass
+        
