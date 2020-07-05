@@ -61,7 +61,7 @@ def resource_media_type():
     db.session.add(article)
     db.session.add(course)
     db.session.add(book)
-    db.session.add(podcast)
+    
     db.session.add(text)
     db.session.add(image)
     db.session.add(audio)

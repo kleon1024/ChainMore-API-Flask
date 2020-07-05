@@ -133,7 +133,7 @@ class MediaType(db.Model):
     name = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='media_type')
 
-    classifiers = db.relationship('ResourceType',
+    classifiers = db.relationship('Classify',
                                   back_populates='classified',
                                   lazy='dynamic',
                                   cascade='all')
@@ -151,7 +151,7 @@ class ResourceType(db.Model):
     name = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='resource_type')
 
-    classifieds = db.relationship('MediaType',
+    classifieds = db.relationship('Classify',
                                   back_populates='classifier',
                                   lazy='dynamic',
                                   cascade='all')
@@ -167,7 +167,7 @@ class Resource(db.Model):
     title = db.Column(db.String)
 
     # resource router
-    url = db.Column(db.String)
+    url = db.Column(db.String, unique=True, index=True)
 
     # External resource with third-party url, which is considered as from web.
     # If this is declared as False, the resource must be declared as original.
@@ -238,6 +238,22 @@ class Collection(db.Model):
 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     author = db.relationship('User', back_populates='collections')
+
+    head_id = db.Column(db.Integer, db.ForeignKey('collection.id'))
+    head = db.relationship('Collection', foreign_keys=[head_id], back_populates='subjects', remote_side=[id])
+    subjects = db.relationship('Collection',
+                                foreign_keys=[head_id],
+                                back_populates='head',
+                                lazy='dynamic',
+                                cascade='all')
+
+    reply_id = db.Column(db.Integer, db.ForeignKey('collection.id'))
+    reply = db.relationship('Collection', foreign_keys=[reply_id], back_populates='repliers', remote_side=[id])
+    repliers = db.relationship('Collection',
+                                foreign_keys=[reply_id],
+                                back_populates='reply',
+                                lazy='dynamic',
+                                cascade='all')
 
     # Ref to resource
     referenceds = db.relationship('Reference',

@@ -103,9 +103,14 @@ class CollectionTestCase(BaseTestCase):
         data = self.OK(response)
         resource_id = data['items'][0]['id']
 
+        response = self.post('/v1/resource/exist',
+                            json=dict(url='https://github.com'))
+        data = self.OK(response)
+        self.assertEqual(data['items'][0]['id'], resource_id)
+
         response = self.post('/v1/resource',
                              json=dict(title='HTML2 for beginner',
-                                       url='https://github.com',
+                                       url='https://github2.com',
                                        external=True,
                                        free=True,
                                        resource_type_id=resource_type_id,
@@ -115,7 +120,7 @@ class CollectionTestCase(BaseTestCase):
 
         response = self.post('/v1/resource',
                              json=dict(title='HTML3 for beginner',
-                                       url='https://github.com',
+                                       url='https://github3.com',
                                        external=True,
                                        free=True,
                                        resource_type_id=resource_type_id,

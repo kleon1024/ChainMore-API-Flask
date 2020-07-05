@@ -149,7 +149,18 @@ class ResourceTypeInstance(RestfulResource):
         db.session.delete(r)
         return response('OK', items=[r.s])
 
+class ResourceExistence(RestfulResource):
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        # TODO check url validation
+        r = Resource.query.filter_by(url=data['url']).first()
+        rt = []
+        if r is not None:
+            rt.append(r.s)
+        return response('OK', items=rt)
 
 api.add_resource(ResourceInstance, '')
 api.add_resource(MediaTypeInstance, '/media_type')
 api.add_resource(ResourceTypeInstance, '/resource_type')
+api.add_resource(ResourceExistence, '/exist')

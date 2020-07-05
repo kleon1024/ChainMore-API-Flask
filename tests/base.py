@@ -12,8 +12,8 @@ from chainmore.extensions import db
 from chainmore.models import User
 from chainmore.blueprints import auth
 
-from chainmore.initialize import (admin, root_domain, resource_type,
-                                  media_type, init_role)
+from chainmore.initialize import (admin, root_domain, resource_media_type,
+                                  init_role)
 
 
 class BaseTestCase(unittest.TestCase):
