@@ -99,6 +99,7 @@ class Permission(db.Model):
     def __repr__(self):
         return '<Permission %r>' % self.name
 
+
 class Classify(db.Model):
     classified_id = db.Column(db.Integer,
                               db.ForeignKey('media_type.id'),
@@ -160,6 +161,34 @@ class ResourceType(db.Model):
         return '<ResourceType %r>' % self.name
 
 
+class Status(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    status = db.Column(db.String, unique=True)
+    reports = db.relationship('Report', back_populates='status')
+
+
+class Report(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    reported_id = db.Column(db.Integer,
+                              db.ForeignKey('resource.id'),
+                              primary_key=True)
+    reporter_id = db.Column(db.Integer,
+                              db.ForeignKey('user.id'),
+                              primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    reported = db.relationship('Resource',
+                                 foreign_keys=[reported_id],
+                                 back_populates='reporters',
+                                 lazy='joined')
+    reporter = db.relationship('User',
+                                 foreign_keys=[reporter_id],
+                                 back_populates='reporteds',
+                                 lazy='joined')
+    description = db.Column(db.Text)
+    status_id = db.Column(db.Integer, ForeignKey('status.id'))
+    status = db.relationship('Status', back_populates='reports')
+
+
 class Resource(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -188,6 +217,11 @@ class Resource(db.Model):
                                   back_populates='referenced',
                                   lazy='dynamic',
                                   cascade='all')
+    
+    reporters = db.relationship('Report',
+                                back_populates='reported',
+                                lazy='dynamic',
+                                cascade='all')
 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     author = db.relationship('User', back_populates='resources')
@@ -234,7 +268,8 @@ class Collection(db.Model):
     title = db.Column(db.String)
     description = db.Column(db.Text)
 
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
 
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     author = db.relationship('User', back_populates='collections')
@@ -498,6 +533,11 @@ class User(db.Model):
                                back_populates='watcher',
                                lazy='dynamic',
                                cascade='all')
+
+    reporteds = db.relationship('Report',
+                                back_populates='reporter',
+                                lazy='dynamic',
+                                cascade='all')
 
     target_domains = db.relationship('TargetDomain',
                                      back_populates='learner',
@@ -858,7 +898,8 @@ class Domain(db.Model):
     deleting = db.Column(db.Boolean, default=False)
     deleted = db.Column(db.Boolean, default=False)
 
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
 
     creator = db.relationship('User', back_populates='domains')
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
