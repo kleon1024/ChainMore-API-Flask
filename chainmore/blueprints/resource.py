@@ -17,6 +17,26 @@ resource_bp = Blueprint('post', __name__)
 api = Api(resource_bp)
 
 
+class ResourceCollected(RestfulResource):
+    @jwt_required
+    def get(self):
+        limit = request.args.get('limit', 10)
+        offset = request.args.get('offset', 1)
+        items = [collect.collected.s for collect in
+                 current_user.collecteds.paginate(offset, limit)]
+        return response('OK', items=items)
+
+
+class ResourceCreated(RestfulResource):
+    @jwt_required
+    def get(self):
+        limit = request.args.get('limit', 10)
+        offset = request.args.get('offset', 1)
+        items = [collect.created.s for collect in
+                 current_user.resources.paginate(offset, limit)]
+        return response('OK', items=items)
+
+
 class ResourceInstance(RestfulResource):
     def get(self):
         id = request.args.get('id')
@@ -48,7 +68,7 @@ class ResourceInstance(RestfulResource):
         data = request.get_json()
 
         r = Resource.query.get_or_404(data['id'])
-        assert (r.author_id == current_user.id)
+        assert r.author_id == current_user.id
 
         r.title = data['title']
         r.url = data['url']
@@ -64,7 +84,7 @@ class ResourceInstance(RestfulResource):
     def delete(self):
         id = request.args.get('id')
         r = Resource.query.get_or_404(id)
-        assert (r.author_id == current_user.id)
+        assert r.author_id == current_user.id
         r.deleted = True
         return response('OK', items=[r.s])
 
@@ -150,6 +170,7 @@ class ResourceTypeInstance(RestfulResource):
         db.session.delete(r)
         return response('OK', items=[r.s])
 
+
 class ResourceExistence(RestfulResource):
     @jwt_required
     def post(self):
@@ -161,6 +182,7 @@ class ResourceExistence(RestfulResource):
             rt.append(r.s)
         return response('OK', items=rt)
 
+
 class ResourceStar(RestfulResource):
     @jwt_required
     def post(self):
@@ -168,7 +190,7 @@ class ResourceStar(RestfulResource):
         r = Resource.query.get_or_404(data['id'])
         current_user.star(r)
         return response('OK', items=[r.s])
-    
+
     @jwt_required
     def delete(self):
         data = request.get_json()
@@ -182,3 +204,5 @@ api.add_resource(MediaTypeInstance, '/media_type')
 api.add_resource(ResourceTypeInstance, '/resource_type')
 api.add_resource(ResourceExistence, '/exist')
 api.add_resource(ResourceStar, '/star')
+api.add_resource(ResourceCollected, '/collected')
+api.add_resource(ResourceCreated, '/created')
