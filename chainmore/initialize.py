@@ -17,8 +17,7 @@ fake = Faker(locale='zh_CN')
 
 
 def admin():
-    admin = User(nickname='Kleon',
-                 username='kleon',
+    admin = User(username='kleon',
                  email='dingli.cm@gmail.com',
                  bio='阡陌 - 连接更多')
 
@@ -60,7 +59,6 @@ def resource_media_type():
 
     db.session.add(article)
     db.session.add(course)
-    db.session.add(book)
     
     db.session.add(text)
     db.session.add(image)
@@ -77,12 +75,7 @@ def resource_media_type():
     db.session.add(Classify(classifier_id=course.id, classified_id=text.id))
     db.session.add(Classify(classifier_id=course.id, classified_id=image.id))
     db.session.add(Classify(classifier_id=course.id, classified_id=audio.id))
-    db.session.add(Classify(classifier_id=course.id, classified_id=video.id))
-
-    db.session.add(Classify(classifier_id=book.id, classified_id=text.id))
-    db.session.add(Classify(classifier_id=book.id, classified_id=image.id))
-    db.session.add(Classify(classifier_id=book.id, classified_id=audio.id))
-    db.session.add(Classify(classifier_id=book.id, classified_id=video.id))    
+    db.session.add(Classify(classifier_id=course.id, classified_id=video.id))  
 
     db.session.commit()
 

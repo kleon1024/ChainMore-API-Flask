@@ -70,6 +70,8 @@ def register_commands(app):
     @app.cli.command()
     def reset():
         """Reset database"""
+        click.echo("Resetting database...")
+        
         db.drop_all()
         db.create_all()
         db.session.commit()
@@ -79,12 +81,16 @@ def register_commands(app):
         """Initialize data"""
         click.echo('Initializing data...')
 
-        from .initialize import (admin, root_domain)
+        from .initialize import (init_role, admin, root_domain, resource_media_type)
 
+        click.echo('Creating roles...')
+        init_role()
         click.echo('Creating admin...')
         admin()
         click.echo('Creating root domain...')
         root_domain()
+        click.echo('Creating resource media type...')
+        resource_media_type()
 
         click.echo('Done')
 

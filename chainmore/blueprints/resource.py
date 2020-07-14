@@ -58,6 +58,7 @@ class ResourceInstance(RestfulResource):
         r.media_type_id = data['media_type_id']
 
         db.session.commit()
+        return response('OK', items=[r.s])
 
     @jwt_required
     def delete(self):
@@ -160,7 +161,24 @@ class ResourceExistence(RestfulResource):
             rt.append(r.s)
         return response('OK', items=rt)
 
+class ResourceStar(RestfulResource):
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        r = Resource.query.get_or_404(data['id'])
+        current_user.star(r)
+        return response('OK', items=[r.s])
+    
+    @jwt_required
+    def delete(self):
+        data = request.get_json()
+        r = Resource.query.get_or_404(data['id'])
+        current_user.unstar(r)
+        return response('OK', items=[r.s])
+
+
 api.add_resource(ResourceInstance, '')
 api.add_resource(MediaTypeInstance, '/media_type')
 api.add_resource(ResourceTypeInstance, '/resource_type')
 api.add_resource(ResourceExistence, '/exist')
+api.add_resource(ResourceStar, '/star')

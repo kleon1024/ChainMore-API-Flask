@@ -38,6 +38,20 @@ class ResourceTestCase(BaseTestCase):
         self.OK(response)
         self.logout()
 
-    def test_get_resource_media_type(self):
-        pass
-        
+    def test_star(self):
+        self.login()
+        response = self.post('/v1/resource',
+                             json=dict(title='HTML入门资料',
+                                       url='https://github.com',
+                                       external=True,
+                                       free=True,
+                                       resource_type_id=1,
+                                       media_type_id=1))
+        data = self.OK(response)
+        resource_id = data['items'][0]['id']
+
+        response = self.post('/v1/resource/star', json=dict(id=resource_id))
+        data = self.OK(response)
+        response = self.delete('/v1/resource/star', json=dict(id=resource_id))
+        data = self.OK(response)
+        self.logout()

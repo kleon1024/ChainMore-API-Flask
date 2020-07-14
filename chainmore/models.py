@@ -118,7 +118,7 @@ class Classify(db.Model):
                                  lazy='joined')
 
     @property
-    def s():
+    def s(self):
         d = {}
         d['resource_id'] = self.classifier_id
         d['resource_name'] = self.classifier.name
@@ -185,7 +185,7 @@ class Report(db.Model):
                                  back_populates='reporteds',
                                  lazy='joined')
     description = db.Column(db.Text)
-    status_id = db.Column(db.Integer, ForeignKey('status.id'))
+    status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
     status = db.relationship('Status', back_populates='reports')
 
 
@@ -231,6 +231,11 @@ class Resource(db.Model):
 
     deleted = db.Column(db.Boolean, default=False)
 
+    collectors = db.relationship('Star',
+                                 back_populates='resource',
+                                 lazy='dynamic',
+                                 cascade='all')
+
     @property
     def s(self):
         if self.deleted:
@@ -238,6 +243,23 @@ class Resource(db.Model):
         else:
             d = self.to_dict()
         return d
+
+class Star(db.Model):
+    resource_id = db.Column(db.Integer,
+                              db.ForeignKey('resource.id'),
+                              primary_key=True)
+    user_id = db.Column(db.Integer,
+                              db.ForeignKey('user.id'),
+                              primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    resource = db.relationship('Resource',
+                                 foreign_keys=[resource_id],
+                                 back_populates='collectors',
+                                 lazy='joined')
+    user = db.relationship('User',
+                                 foreign_keys=[user_id],
+                                 back_populates='stars',
+                                 lazy='joined')
 
 
 @whooshee.register_model('description')
@@ -472,13 +494,13 @@ class Watch(db.Model):
                               lazy='joined')
 
 
-@whooshee.register_model('nickname', 'username')
+@whooshee.register_model('username')
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, index=True)
+    username = db.Column(db.String(30), unique=True, index=True)
     email = db.Column(db.String(254), unique=True, index=True)
+    phone = db.Column(db.String(30), unique=True, index=True)
     password_hash = db.Column(db.String(128))
-    nickname = db.Column(db.String(30), unique=True)
     bio = db.Column(db.String(120))
 
     locked = db.Column(db.Boolean, default=False)
@@ -503,6 +525,10 @@ class User(db.Model):
     resources = db.relationship('Resource',
                                 back_populates='author',
                                 cascade='all')
+    stars = db.relationship('Star',
+                                 back_populates='user',
+                                 lazy='dynamic',
+                                 cascade='all')
     roadmaps = db.relationship('Roadmap',
                                back_populates='creator',
                                cascade='all')
@@ -667,6 +693,23 @@ class User(db.Model):
     def is_collecting(self, post):
         return Collect.query.with_parent(self).filter_by(
             collected_id=post.id).first() is not None
+
+    def star(self, resource):
+        if not self.is_staring(resource):
+            star = Star(user=self, resource=resource)
+            db.session.add(star)
+            db.session.commit()
+
+    def unstar(self, resource):
+        star = Star.query.with_parent(self).filter_by(
+            resource_id=resource.id).first()
+        if star:
+            db.session.delete(star)
+            db.session.commit()
+
+    def is_staring(self, resource):
+        return Star.query.with_parent(self).filter_by(
+            resource_id=resource.id).first() is not None
 
 #     def like(self, sparkle):
 #         if not self.is_liking(sparkle):
