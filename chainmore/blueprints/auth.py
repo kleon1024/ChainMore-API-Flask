@@ -26,7 +26,7 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-access_token_expire_time = datetime.timedelta(minutes=15)
+access_token_expire_time = datetime.timedelta(minutes=120)
 refresh_token_expire_time = datetime.timedelta(days=30)
 
 
@@ -45,7 +45,6 @@ class SignUp(Resource):
         data = request.get_json()
         if data is None:
             return response("EMPTY_BODY", msg="Empty Body")
-        nickname = data.get("nickname", "")
         email = data.get("email", "")
         username = data.get("username", "")
         password = data.get("password", "")
@@ -69,10 +68,8 @@ class SignUp(Resource):
 class SignIn(Resource):
     def post(self):
         data = request.get_json()
-        if data is None:
-            return response("EMPTY_BODY", msg="Empty Body")
-        username = data.get("username", "")
-        password = data.get("password", "")
+        username = data["username"]
+        password = data["password"]
 
         if validate_email(username, 18):
             user = User.query.filter_by(email=username.lower()).first()
@@ -88,11 +85,10 @@ class SignIn(Resource):
             return response("OK",
                             msg="User Login As {}".format(username),
                             username=username,
-                            nickname=user.nickname,
                             accessToken=access_token,
                             refreshToken=refresh_token)
 
-        return response("SIGN_IN_FAILED", msg="Invalid Credential")
+        return response("BAD_REQUEST")
 
 
 class SignOut(Resource):

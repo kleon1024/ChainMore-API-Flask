@@ -497,7 +497,7 @@ class Watch(db.Model):
 @whooshee.register_model('username')
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(30), unique=True, index=True)
+    username = db.Column(db.String(64), unique=True, index=True)
     email = db.Column(db.String(254), unique=True, index=True)
     phone = db.Column(db.String(30), unique=True, index=True)
     password_hash = db.Column(db.String(128))

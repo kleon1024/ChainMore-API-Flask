@@ -172,7 +172,6 @@ class ResourceTypeInstance(RestfulResource):
 
 
 class ResourceExistence(RestfulResource):
-    @jwt_required
     def post(self):
         data = request.get_json()
         # TODO check url validation
