@@ -17,23 +17,27 @@ resource_bp = Blueprint('post', __name__)
 api = Api(resource_bp)
 
 
+class ResourceStared(RestfulResource):
+    @jwt_required
+    def get(self):
+        items = [star.resource.s for star in
+                 current_user.stars]
+        return response('OK', items=items)
+
+
 class ResourceCollected(RestfulResource):
     @jwt_required
     def get(self):
-        limit = request.args.get('limit', 10)
-        offset = request.args.get('offset', 1)
         items = [collect.collected.s for collect in
-                 current_user.collecteds.paginate(offset, limit)]
+                 current_user.collecteds]
         return response('OK', items=items)
 
 
 class ResourceCreated(RestfulResource):
     @jwt_required
     def get(self):
-        limit = request.args.get('limit', 10)
-        offset = request.args.get('offset', 1)
-        items = [collect.created.s for collect in
-                 current_user.resources.paginate(offset, limit)]
+        items = [resource.s for resource in
+                 current_user.resources]
         return response('OK', items=items)
 
 
@@ -184,6 +188,15 @@ class ResourceExistence(RestfulResource):
 
 class ResourceStar(RestfulResource):
     @jwt_required
+    def get(self):
+        id = request.args['id']
+        r = Resource.query.get_or_404(id)
+        items = []
+        if current_user.is_staring(r):
+            items.append(r.s)
+        return response('OK', items=items)
+
+    @jwt_required
     def post(self):
         data = request.get_json()
         r = Resource.query.get_or_404(data['id'])
@@ -192,8 +205,8 @@ class ResourceStar(RestfulResource):
 
     @jwt_required
     def delete(self):
-        data = request.get_json()
-        r = Resource.query.get_or_404(data['id'])
+        id = request.args.get('id')
+        r = Resource.query.get_or_404(id)
         current_user.unstar(r)
         return response('OK', items=[r.s])
 
@@ -204,4 +217,5 @@ api.add_resource(ResourceTypeInstance, '/resource_type')
 api.add_resource(ResourceExistence, '/exist')
 api.add_resource(ResourceStar, '/star')
 api.add_resource(ResourceCollected, '/collected')
+api.add_resource(ResourceStared, '/stared')
 api.add_resource(ResourceCreated, '/created')

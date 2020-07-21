@@ -52,6 +52,6 @@ class ResourceTestCase(BaseTestCase):
 
         response = self.post('/v1/resource/star', json=dict(id=resource_id))
         data = self.OK(response)
-        response = self.delete('/v1/resource/star', json=dict(id=resource_id))
+        response = self.delete('/v1/resource/star', query_string=dict(id=resource_id))
         data = self.OK(response)
         self.logout()

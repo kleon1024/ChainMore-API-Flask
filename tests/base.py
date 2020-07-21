@@ -50,9 +50,8 @@ class BaseTestCase(unittest.TestCase):
                                           password=password))
         response = data.get_json()
         if (response is not None):
-            self.access_token = response["accessToken"]
-            self.refresh_token = response["refreshToken"]
-            self.nickname = response["nickname"]
+            self.access_token = response["access_token"]
+            self.refresh_token = response["refresh_token"]
             self.username = response["username"]
         return data
 

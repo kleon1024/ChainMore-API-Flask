@@ -26,8 +26,8 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-access_token_expire_time = datetime.timedelta(minutes=120)
-refresh_token_expire_time = datetime.timedelta(days=30)
+access_token_expire_time = datetime.timedelta(days=120)
+refresh_token_expire_time = datetime.timedelta(days=300)
 
 
 @jwt.user_loader_callback_loader
@@ -84,9 +84,10 @@ class SignIn(Resource):
                 identity=username, expires_delta=refresh_token_expire_time)
             return response("OK",
                             msg="User Login As {}".format(username),
+                            id=user.id,
                             username=username,
-                            accessToken=access_token,
-                            refreshToken=refresh_token)
+                            access_token=access_token,
+                            refresh_token=refresh_token)
 
         return response("BAD_REQUEST")
 
@@ -107,11 +108,11 @@ class SigninRefresh(Resource):
         refresh_token = create_refresh_token(identity=username)
         return response("OK",
                         msg="Token Refreshed",
-                        accessToken=access_token,
-                        refreshToken=refresh_token)
+                        access_token=access_token,
+                        refresh_token=refresh_token)
 
 
 api.add_resource(SignIn, '/signin')
 api.add_resource(SignUp, '/signup')
 api.add_resource(SignOut, '/signout')
-api.add_resource(SigninRefresh, '/signin/refresh')
+api.add_resource(SigninRefresh, '/refresh')

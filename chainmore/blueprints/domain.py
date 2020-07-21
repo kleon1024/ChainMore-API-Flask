@@ -16,6 +16,39 @@ domain_bp = Blueprint('domain', __name__)
 api = Api(domain_bp)
 
 
+class DomainMarked(Resource):
+    @jwt_required
+    def get(self):
+        items = [mark.domain.s for mark in
+                 current_user.markeds]
+        return response('OK', items=items)
+
+
+class DomainMark(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args['id']
+        r = Domain.query.get_or_404(id)
+        items = []
+        if current_user.is_marking(r):
+            items.append(r.s)
+        return response('OK', items=items)
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        r = Domain.query.get_or_404(data['id'])
+        current_user.mark(r)
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        r = Domain.query.get_or_404(id)
+        current_user.unmark(r)
+        return response('OK', items=[r.s])
+
+
 class DomainInstance(Resource):
     def get(self):
         id = request.args.get('id')
@@ -380,3 +413,5 @@ api.add_resource(DomainDependants, '/dependants')
 api.add_resource(DomainDepends, '/depends')
 # api.add_resource(RoadMapInstance, '/roadmap')
 # api.add_resource(RoadMapLearn, '/roadmap/learn')
+api.add_resource(DomainMarked, '/marked')
+api.add_resource(DomainMark, '/mark')

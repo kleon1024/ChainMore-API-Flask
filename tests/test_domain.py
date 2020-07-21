@@ -126,6 +126,25 @@ class DomainTestCase(BaseTestCase):
         for item in data['items']:
             self.assertEqual(item['id'], a1_id)
 
+    def test_mark_domain(self):
+        self.login()
+        response = self.post('/v1/domain',
+                             json=dict(title='DEP0',
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        id = data['items'][0]['id']
+        response = self.post('/v1/domain/mark',
+                             json=dict(id=id))
+        data = self.OK(response)
+        self.assertEqual(data['items'][0]['id'], id)
+
+        response = self.get('/v1/domain/marked')
+        data = self.OK(response)
+        self.assertEqual(len(data['items']), 1)
+        for item in data['items']:
+            self.assertEqual(item['id'], id)
+
     # def test_put_domain(self):
     #     self.login()
     #     response = self.post('/v1/domain',

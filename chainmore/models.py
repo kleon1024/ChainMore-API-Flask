@@ -494,6 +494,20 @@ class Watch(db.Model):
                               lazy='joined')
 
 
+class Mark(db.Model):
+    user_id = db.Column(db.Integer,
+                           db.ForeignKey('user.id'),
+                           primary_key=True)
+    domain_id = db.Column(db.Integer,
+                           db.ForeignKey('domain.id'),
+                           primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User', back_populates='markeds', lazy='joined')
+    domain = db.relationship('Domain',
+                              back_populates='markers',
+                              lazy='joined')
+
+
 @whooshee.register_model('username')
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -559,7 +573,10 @@ class User(db.Model):
                                back_populates='watcher',
                                lazy='dynamic',
                                cascade='all')
-
+    markeds = db.relationship('Mark',
+                               back_populates='user',
+                               lazy='dynamic',
+                               cascade='all')
     reporteds = db.relationship('Report',
                                 back_populates='reporter',
                                 lazy='dynamic',
@@ -696,7 +713,7 @@ class User(db.Model):
 
     def star(self, resource):
         if not self.is_staring(resource):
-            star = Star(user=self, resource=resource)
+            star = Star(user_id=self.id, resource_id=resource.id)
             db.session.add(star)
             db.session.commit()
 
@@ -710,6 +727,23 @@ class User(db.Model):
     def is_staring(self, resource):
         return Star.query.with_parent(self).filter_by(
             resource_id=resource.id).first() is not None
+
+    def mark(self, resource):
+        if not self.is_marking(resource):
+            mark = Mark(user_id=self.id, domain_id=resource.id)
+            db.session.add(mark)
+            db.session.commit()
+
+    def unmark(self, resource):
+        mark = Mark.query.with_parent(self).filter_by(
+            domain_id=resource.id).first()
+        if mark:
+            db.session.delete(mark)
+            db.session.commit()
+
+    def is_marking(self, resource):
+        return Mark.query.with_parent(self).filter_by(
+            domain_id=resource.id).first() is not None
 
 #     def like(self, sparkle):
 #         if not self.is_liking(sparkle):
@@ -960,6 +994,11 @@ class Domain(db.Model):
 
     watchers = db.relationship('Watch',
                                back_populates='watched',
+                               lazy='dynamic',
+                               cascade='all')
+
+    markers = db.relationship('Mark',
+                               back_populates='domain',
                                lazy='dynamic',
                                cascade='all')
 
