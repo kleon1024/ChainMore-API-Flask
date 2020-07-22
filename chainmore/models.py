@@ -125,7 +125,7 @@ class Classify(db.Model):
         d['media_id'] = self.classified_id
         d['media_name'] = self.classified.name
         return d
-    
+
 
 class MediaType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -170,20 +170,20 @@ class Status(db.Model):
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     reported_id = db.Column(db.Integer,
-                              db.ForeignKey('resource.id'),
-                              primary_key=True)
+                            db.ForeignKey('resource.id'),
+                            primary_key=True)
     reporter_id = db.Column(db.Integer,
-                              db.ForeignKey('user.id'),
-                              primary_key=True)
+                            db.ForeignKey('user.id'),
+                            primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     reported = db.relationship('Resource',
-                                 foreign_keys=[reported_id],
-                                 back_populates='reporters',
-                                 lazy='joined')
+                               foreign_keys=[reported_id],
+                               back_populates='reporters',
+                               lazy='joined')
     reporter = db.relationship('User',
-                                 foreign_keys=[reporter_id],
-                                 back_populates='reporteds',
-                                 lazy='joined')
+                               foreign_keys=[reporter_id],
+                               back_populates='reporteds',
+                               lazy='joined')
     description = db.Column(db.Text)
     status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
     status = db.relationship('Status', back_populates='reports')
@@ -217,7 +217,7 @@ class Resource(db.Model):
                                   back_populates='referenced',
                                   lazy='dynamic',
                                   cascade='all')
-    
+
     reporters = db.relationship('Report',
                                 back_populates='reported',
                                 lazy='dynamic',
@@ -239,27 +239,28 @@ class Resource(db.Model):
     @property
     def s(self):
         if self.deleted:
-            d ={'id' : self.id, 'deleted': self.deleted}
+            d = {'id': self.id, 'deleted': self.deleted}
         else:
             d = self.to_dict()
         return d
 
+
 class Star(db.Model):
     resource_id = db.Column(db.Integer,
-                              db.ForeignKey('resource.id'),
-                              primary_key=True)
+                            db.ForeignKey('resource.id'),
+                            primary_key=True)
     user_id = db.Column(db.Integer,
-                              db.ForeignKey('user.id'),
-                              primary_key=True)
+                        db.ForeignKey('user.id'),
+                        primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     resource = db.relationship('Resource',
-                                 foreign_keys=[resource_id],
-                                 back_populates='collectors',
-                                 lazy='joined')
+                               foreign_keys=[resource_id],
+                               back_populates='collectors',
+                               lazy='joined')
     user = db.relationship('User',
-                                 foreign_keys=[user_id],
-                                 back_populates='stars',
-                                 lazy='joined')
+                           foreign_keys=[user_id],
+                           back_populates='stars',
+                           lazy='joined')
 
 
 @whooshee.register_model('description')
@@ -297,20 +298,22 @@ class Collection(db.Model):
     author = db.relationship('User', back_populates='collections')
 
     head_id = db.Column(db.Integer, db.ForeignKey('collection.id'))
-    head = db.relationship('Collection', foreign_keys=[head_id], back_populates='subjects', remote_side=[id])
+    head = db.relationship('Collection', foreign_keys=[
+                           head_id], back_populates='subjects', remote_side=[id])
     subjects = db.relationship('Collection',
-                                foreign_keys=[head_id],
-                                back_populates='head',
-                                lazy='dynamic',
-                                cascade='all')
+                               foreign_keys=[head_id],
+                               back_populates='head',
+                               lazy='dynamic',
+                               cascade='all')
 
     reply_id = db.Column(db.Integer, db.ForeignKey('collection.id'))
-    reply = db.relationship('Collection', foreign_keys=[reply_id], back_populates='repliers', remote_side=[id])
+    reply = db.relationship('Collection', foreign_keys=[
+                            reply_id], back_populates='repliers', remote_side=[id])
     repliers = db.relationship('Collection',
-                                foreign_keys=[reply_id],
-                                back_populates='reply',
-                                lazy='dynamic',
-                                cascade='all')
+                               foreign_keys=[reply_id],
+                               back_populates='reply',
+                               lazy='dynamic',
+                               cascade='all')
 
     # Ref to resource
     referenceds = db.relationship('Reference',
@@ -496,16 +499,16 @@ class Watch(db.Model):
 
 class Mark(db.Model):
     user_id = db.Column(db.Integer,
-                           db.ForeignKey('user.id'),
-                           primary_key=True)
+                        db.ForeignKey('user.id'),
+                        primary_key=True)
     domain_id = db.Column(db.Integer,
-                           db.ForeignKey('domain.id'),
-                           primary_key=True)
+                          db.ForeignKey('domain.id'),
+                          primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', back_populates='markeds', lazy='joined')
     domain = db.relationship('Domain',
-                              back_populates='markers',
-                              lazy='joined')
+                             back_populates='markers',
+                             lazy='joined')
 
 
 @whooshee.register_model('username')
@@ -540,9 +543,9 @@ class User(db.Model):
                                 back_populates='author',
                                 cascade='all')
     stars = db.relationship('Star',
-                                 back_populates='user',
-                                 lazy='dynamic',
-                                 cascade='all')
+                            back_populates='user',
+                            lazy='dynamic',
+                            cascade='all')
     roadmaps = db.relationship('Roadmap',
                                back_populates='creator',
                                cascade='all')
@@ -574,9 +577,9 @@ class User(db.Model):
                                lazy='dynamic',
                                cascade='all')
     markeds = db.relationship('Mark',
-                               back_populates='user',
-                               lazy='dynamic',
-                               cascade='all')
+                              back_populates='user',
+                              lazy='dynamic',
+                              cascade='all')
     reporteds = db.relationship('Report',
                                 back_populates='reporter',
                                 lazy='dynamic',
@@ -969,8 +972,8 @@ class Roadmap(db.Model):
 @whooshee.register_model('title', 'intro')
 class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String, unique=True)
-    intro = db.Column(db.String)
+    title = db.Column(db.String, unique=True, index=True)
+    intro = db.Column(db.String, default="")
 
     deleting = db.Column(db.Boolean, default=False)
     deleted = db.Column(db.Boolean, default=False)
@@ -998,9 +1001,9 @@ class Domain(db.Model):
                                cascade='all')
 
     markers = db.relationship('Mark',
-                               back_populates='domain',
-                               lazy='dynamic',
-                               cascade='all')
+                              back_populates='domain',
+                              lazy='dynamic',
+                              cascade='all')
 
     collections = db.relationship('Collection',
                                   back_populates='domain',
@@ -1057,26 +1060,30 @@ class Domain(db.Model):
     def dep(self, dependant):
         for depended in Depend.query.filter(
                 Depend.descendant_id == self.id).all():
+            if dependant.dependeds.filter_by(ancestor_id=depended.ancestor_id).count() == 0:
+                db.session.add(
+                    Depend(ancestor_id=depended.ancestor_id,
+                        descendant_id=dependant.id,
+                        distance=depended.distance + 1))
+        if dependant.dependeds.filter_by(ancestor_id=dependant.id).count() == 0:
             db.session.add(
-                Depend(ancestor_id=depended.ancestor_id,
+                Depend(ancestor_id=dependant.id,
                        descendant_id=dependant.id,
-                       distance=depended.distance + 1))
-        db.session.add(
-            Depend(ancestor_id=dependant.id,
-                   descendant_id=dependant.id,
-                   distance=0))
+                       distance=0))
 
     def agg(self, aggregated):
         for aggregator in Aggregate.query.filter(
                 Aggregate.descendant_id == self.id):
+            if aggregated.aggregators.filter_by(ancestor_id=aggregator.ancestor_id).count() == 0:
+                db.session.add(
+                    Aggregate(ancestor_id=aggregator.ancestor_id,
+                            descendant_id=aggregated.id,
+                            distance=aggregator.distance + 1))
+        if aggregated.aggregators.filter_by(ancestor_id=aggregated.id).count() == 0:
             db.session.add(
-                Aggregate(ancestor_id=aggregator.ancestor_id,
+                Aggregate(ancestor_id=aggregated.id,
                           descendant_id=aggregated.id,
-                          distance=aggregator.distance + 1))
-        db.session.add(
-            Aggregate(ancestor_id=aggregated.id,
-                      descendant_id=aggregated.id,
-                      distance=0))
+                          distance=0))
 
 
 # @whooshee.register_model('body')

@@ -8,7 +8,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response)
-from ..models import (Domain, Depend, Aggregate)
+from ..models import (Domain, Depend, Aggregate, Collection)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -21,6 +21,14 @@ class DomainMarked(Resource):
     def get(self):
         items = [mark.domain.s for mark in
                  current_user.markeds]
+        return response('OK', items=items)
+
+
+class DomainCreated(Resource):
+    @jwt_required
+    def get(self):
+        items = [domain.s for domain in
+                 current_user.domains]
         return response('OK', items=items)
 
 
@@ -71,17 +79,25 @@ class DomainInstance(Resource):
         aggregators = data['aggregators']
         assert (len(aggregators) == 1)
 
+        certified_dependeds = []
+        for depended in dependeds:
+            depended = Domain.query.get_or_404(depended)
+            assert (depended.is_certified(current_user))
+            certified_dependeds.append(depended)
+
+        certified_aggregators = []
+        for aggregator in aggregators:
+            aggregator = Domain.query.get_or_404(aggregator)
+            assert (aggregator.is_certified(current_user))
+            certified_aggregators.append(aggregator)
+
         r = Domain(**kwargs)
         db.session.add(r)
         db.session.commit()
 
-        for depended in dependeds:
-            depended = Domain.query.get_or_404(depended)
-            assert (depended.is_certified(current_user))
+        for depended in certified_dependeds:
             depended.dep(r)
-        for aggregator in aggregators:
-            aggregator = Domain.query.get_or_404(aggregator)
-            assert (aggregator.is_certified(current_user))
+        for aggregator in certified_aggregators:
             aggregator.agg(r)
 
         db.session.commit()
@@ -90,6 +106,8 @@ class DomainInstance(Resource):
     # Cost: 10
     @jwt_required
     def put(self):
+        data = request.get_json()
+
         r = Collection.query.get_or_404(data['id'])
         r.title = data['title']
         r.intro = data.get('intro', '')
@@ -127,9 +145,10 @@ class DomainInstance(Resource):
     @jwt_required
     def delete(self):
         id = request.args.get('id')
-        r = Resource.query.get_or_404(id)
+        r = Domain.query.get_or_404(id)
         assert (r.author_id == current_user.id)
         r.deleting = True
+        db.session.commit()
         return response('OK', items=[r.s])
 
 
@@ -414,4 +433,5 @@ api.add_resource(DomainDepends, '/depends')
 # api.add_resource(RoadMapInstance, '/roadmap')
 # api.add_resource(RoadMapLearn, '/roadmap/learn')
 api.add_resource(DomainMarked, '/marked')
+api.add_resource(DomainCreated, '/created')
 api.add_resource(DomainMark, '/mark')

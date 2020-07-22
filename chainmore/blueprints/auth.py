@@ -75,7 +75,7 @@ class SignIn(Resource):
             user = User.query.filter_by(email=username.lower()).first()
         elif validate_username(username, 20):
             user = User.query.filter_by(username=username.lower()).first()
-
+        
         if user is not None and user.validate_password(password):
             username = user.username
             access_token = create_access_token(

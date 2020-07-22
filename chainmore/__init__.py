@@ -79,6 +79,8 @@ def register_commands(app):
     @app.cli.command()
     def init():
         """Initialize data"""
+        db.create_all()
+        db.session.commit()
         click.echo('Initializing data...')
 
         from .initialize import (init_role, admin, root_domain, resource_media_type)
