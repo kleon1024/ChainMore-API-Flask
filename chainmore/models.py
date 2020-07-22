@@ -284,12 +284,21 @@ class Reference(db.Model):
     description = db.Column(db.Text)
 
 
+class CollectionType(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+
+    collections = db.relationship('Collection', back_populates='type')
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 # Resource Collection
 @whooshee.register_model('title', 'description')
 class Collection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
-    description = db.Column(db.Text)
+    description = db.Column(db.Text, default="")
+    indicator = db.Column(db.String, default="")
 
     create_time = db.Column(db.DateTime, default=datetime.utcnow)
     modify_time = db.Column(db.DateTime, default=datetime.utcnow)
@@ -333,6 +342,9 @@ class Collection(db.Model):
 
     deleted = db.Column(db.Boolean, default=False)
 
+    type_id = db.Column(db.Integer, db.ForeignKey('collection_type.id'))
+    type = db.relationship('CollectionType', back_populates='collections')
+
     def ref(self, resources):
         cur_res = Reference.query.filter_by(referencer_id=self.id).all()
 
@@ -348,10 +360,22 @@ class Collection(db.Model):
             ref = Reference(referenced_id=res.id, referencer_id=self.id)
             db.session.add(ref)
 
+    def resource_indicators(self):
+        d = {
+            1 : '📄',
+            2 : '🖼',
+            3 : '🔈',
+            4 : '▶️'
+        }
+        indictor = set()
+        for ref in self.referenceds:
+            indictor.add(d.get(ref.referenced.media_type_id, ''))
+        return ''.join(indictor)
+
     @property
     def s(self):
         d = self.to_dict()
-        d['referenceds'] = [ref.referenced.s for ref in self.referenceds.all()]
+        d['domain_title'] = self.domain.title
         return d
 
 
@@ -697,22 +721,22 @@ class User(db.Model):
         self.active = True
         db.session.commit()
 
-    def collect(self, post):
-        if not self.is_collecting(post):
-            collect = Collect(collector=self, collected=post)
+    def collect(self, collection):
+        if not self.is_collecting(collection):
+            collect = Collect(collector=self, collected=collection)
             db.session.add(collect)
             db.session.commit()
 
-    def uncollect(self, post):
+    def uncollect(self, collection):
         collect = Collect.query.with_parent(self).filter_by(
-            collected_id=post.id).first()
+            collected_id=collection.id).first()
         if collect:
             db.session.delete(collect)
             db.session.commit()
 
-    def is_collecting(self, post):
+    def is_collecting(self, collection):
         return Collect.query.with_parent(self).filter_by(
-            collected_id=post.id).first() is not None
+            collected_id=collection.id).first() is not None
 
     def star(self, resource):
         if not self.is_staring(resource):
@@ -1063,8 +1087,8 @@ class Domain(db.Model):
             if dependant.dependeds.filter_by(ancestor_id=depended.ancestor_id).count() == 0:
                 db.session.add(
                     Depend(ancestor_id=depended.ancestor_id,
-                        descendant_id=dependant.id,
-                        distance=depended.distance + 1))
+                           descendant_id=dependant.id,
+                           distance=depended.distance + 1))
         if dependant.dependeds.filter_by(ancestor_id=dependant.id).count() == 0:
             db.session.add(
                 Depend(ancestor_id=dependant.id,
@@ -1077,14 +1101,13 @@ class Domain(db.Model):
             if aggregated.aggregators.filter_by(ancestor_id=aggregator.ancestor_id).count() == 0:
                 db.session.add(
                     Aggregate(ancestor_id=aggregator.ancestor_id,
-                            descendant_id=aggregated.id,
-                            distance=aggregator.distance + 1))
+                              descendant_id=aggregated.id,
+                              distance=aggregator.distance + 1))
         if aggregated.aggregators.filter_by(ancestor_id=aggregated.id).count() == 0:
             db.session.add(
                 Aggregate(ancestor_id=aggregated.id,
                           descendant_id=aggregated.id,
                           distance=0))
-
 
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):

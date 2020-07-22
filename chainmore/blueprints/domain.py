@@ -82,13 +82,13 @@ class DomainInstance(Resource):
         certified_dependeds = []
         for depended in dependeds:
             depended = Domain.query.get_or_404(depended)
-            assert (depended.is_certified(current_user))
+            assert depended.is_certified(current_user)
             certified_dependeds.append(depended)
 
         certified_aggregators = []
         for aggregator in aggregators:
             aggregator = Domain.query.get_or_404(aggregator)
-            assert (aggregator.is_certified(current_user))
+            assert aggregator.is_certified(current_user)
             certified_aggregators.append(aggregator)
 
         r = Domain(**kwargs)

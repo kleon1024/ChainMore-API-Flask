@@ -15,6 +15,47 @@ collection_bp = Blueprint('collection', __name__)
 api = Api(collection_bp)
 
 
+class CollectionCollected(Resource):
+    @jwt_required
+    def get(self):
+        items = [collected.collected.s for collected in
+                 current_user.collecteds]
+        return response('OK', items=items)
+
+
+class CollectionCreated(Resource):
+    @jwt_required
+    def get(self):
+        items = [collection.s for collection in
+                 current_user.collections]
+        return response('OK', items=items)
+
+
+class CollectionCollect(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args['id']
+        r = Collection.query.get_or_404(id)
+        items = []
+        if current_user.is_collecting(r):
+            items.append(r.s)
+        return response('OK', items=items)
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        r = Collection.query.get_or_404(data['id'])
+        current_user.collect(r)
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        r = Collection.query.get_or_404(id)
+        current_user.uncollect(r)
+        return response('OK', items=[r.s])
+
+
 class CollectionInstance(Resource):
     def get(self):
         id = request.args.get('id')
@@ -32,6 +73,11 @@ class CollectionInstance(Resource):
             domain_id=data['domain_id'],
         )
 
+        domain = Domain.query.get_or_404(data['domain_id'])
+
+        for dep in domain.dependeds:
+            assert dep.ancestor.is_certified(current_user)
+
         resources = data['resources']
 
         r = Collection(**kwargs)
@@ -41,6 +87,11 @@ class CollectionInstance(Resource):
         r.ref(resources)
 
         db.session.commit()
+
+        r.indicator = '' + r.resource_indicators()
+
+        db.session.commit()
+
         return response('OK', items=[r.s])
 
     @jwt_required
@@ -62,7 +113,7 @@ class CollectionInstance(Resource):
     @jwt_required
     def delete(self):
         id = request.args.get('id')
-        r = Resource.query.get_or_404(id)
+        r = Collection.query.get_or_404(id)
         assert (r.author_id == current_user.id)
         r.deleted = True
         return response('OK', items=[r.s])
@@ -328,3 +379,6 @@ api.add_resource(CollectionInstance, '')
 # api.add_resource(PostUnsign, '/unsign')
 # api.add_resource(PostTrendings, '/trendings')
 # api.add_resource(EmojiReply, '/emoji')
+api.add_resource(CollectionCollected, '/collected')
+api.add_resource(CollectionCreated, '/created')
+api.add_resource(CollectionCollect, '/collect')

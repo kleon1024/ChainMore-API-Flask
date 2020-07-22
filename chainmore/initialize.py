@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
 from .models import (User, Domain, Depend, Aggregate, ResourceType, MediaType,
-                     Role, Classify)
+                     Role, Classify, CollectionType)
 from .utils import (exist_username, exist_email, exist_nickname, exist_domain)
 
 fake = Faker(locale='zh_CN')
@@ -31,9 +31,9 @@ def admin():
 
 def root_domain():
     admin = User.query.filter_by(username='kleon').first()
-    domain = Domain.query.filter_by(title="阡陌").first()
+    domain = Domain.query.filter_by(title="∞").first()
     if domain is None:
-        domain = Domain(title="阡陌", creator=admin)
+        domain = Domain(title="∞", creator=admin)
         db.session.add(domain)
         db.session.commit()
 
@@ -78,6 +78,20 @@ def resource_media_type():
     db.session.add(Classify(classifier_id=course.id, classified_id=video.id))  
 
     db.session.commit()
+
+
+def collection_type():
+    collection = CollectionType(name="collection")
+    idea = CollectionType(name="idea")
+    news = CollectionType(name="news")
+    question = CollectionType(name="question")
+    answer = CollectionType(name="answer")
+
+    db.session.add(collection)
+    db.session.add(idea)
+    db.session.add(news)
+    db.session.add(question)
+    db.session.add(answer)
 
 
 def init_role():
