@@ -46,7 +46,8 @@ class RoadmapInstance(Resource):
 
     @jwt_required
     def put(self):
-        r = Collection.query.get_or_404(data['id'])
+        data = request.get_json()
+        r = Roadmap.query.get_or_404(data['id'])
         r.title = data['title']
         r.intro = data['intro']
         r.description = data['description']
@@ -61,7 +62,7 @@ class RoadmapInstance(Resource):
     @jwt_required
     def delete(self):
         id = request.args.get('id')
-        r = Resource.query.get_or_404(id)
+        r = Roadmap.query.get_or_404(id)
         assert (r.author_id == current_user.id)
         r.deleting = True
         return response('OK', items=[r.s])

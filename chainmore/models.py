@@ -362,10 +362,10 @@ class Collection(db.Model):
 
     def resource_indicators(self):
         d = {
-            1 : '📄',
-            2 : '🖼',
-            3 : '🔈',
-            4 : '▶️'
+            1 : 'text',
+            2 : 'image',
+            3 : 'audio',
+            4 : 'video'
         }
         indictor = set()
         for ref in self.referenceds:
@@ -398,12 +398,11 @@ class Certify(db.Model):
 
 
 class Aggregate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
     ancestor_id = db.Column(db.Integer,
-                            db.ForeignKey('domain.id'),
-                            primary_key=True)
+                            db.ForeignKey('domain.id'))
     descendant_id = db.Column(db.Integer,
-                              db.ForeignKey('domain.id'),
-                              primary_key=True)
+                              db.ForeignKey('domain.id'))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     descendant = db.relationship('Domain',
                                  foreign_keys=[descendant_id],
@@ -424,12 +423,11 @@ class Aggregate(db.Model):
 
 
 class Depend(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
     ancestor_id = db.Column(db.Integer,
-                            db.ForeignKey('domain.id'),
-                            primary_key=True)
+                            db.ForeignKey('domain.id'))
     descendant_id = db.Column(db.Integer,
-                              db.ForeignKey('domain.id'),
-                              primary_key=True)
+                              db.ForeignKey('domain.id'))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     descendant = db.relationship('Domain',
                                  foreign_keys=[descendant_id],

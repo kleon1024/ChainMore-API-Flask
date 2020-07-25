@@ -82,3 +82,7 @@ class BaseTestCase(unittest.TestCase):
             print(response)
         self.assertEqual(data["code"], 20000)
         return data
+
+    def format(self, d):
+        data = json.dumps(d, indent=2)
+        print(data)

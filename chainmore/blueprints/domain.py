@@ -82,13 +82,13 @@ class DomainInstance(Resource):
         certified_dependeds = []
         for depended in dependeds:
             depended = Domain.query.get_or_404(depended)
-            assert depended.is_certified(current_user)
+            # assert depended.is_certified(current_user)
             certified_dependeds.append(depended)
 
         certified_aggregators = []
         for aggregator in aggregators:
             aggregator = Domain.query.get_or_404(aggregator)
-            assert aggregator.is_certified(current_user)
+            # assert aggregator.is_certified(current_user)
             certified_aggregators.append(aggregator)
 
         r = Domain(**kwargs)
@@ -125,7 +125,7 @@ class DomainInstance(Resource):
                 synchronize_session=False)
         for depended in new_dependeds - old_dependeds:
             depended = Domain.query.get_or_404(depended)
-            assert (depended.is_certified(current_user))
+            # assert (depended.is_certified(current_user))
             depended.dep(r)
 
         old_aggregators = set(
@@ -136,7 +136,7 @@ class DomainInstance(Resource):
                                             synchronize_session=False)
         for aggregator in new_aggregators - old_aggregators:
             aggregator = Domain.query.get_or_404(aggregator)
-            assert (aggregator.is_certified(current_user))
+            # assert (aggregator.is_certified(current_user))
             aggregator.agg(r)
 
         db.session.commit()
@@ -342,6 +342,13 @@ class DomainDepends(Resource):
                 Depend.descendant_id == domain.id, ~Depend.ancestor_id.in_(
                     exclude_domains)).order_by(Depend.distance.desc()).all()
         ]
+
+        ol = {}
+        for r in rs:
+            if r['id'] not in ol:
+                ol[r['id']] = r
+
+        rs = list(ol.values())
         return response('OK', items=rs)
 
 

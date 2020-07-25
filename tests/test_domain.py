@@ -1,5 +1,4 @@
 from flask import current_app
-
 from tests.base import BaseTestCase
 
 
@@ -122,9 +121,9 @@ class DomainTestCase(BaseTestCase):
         response = self.get('/v1/domain/depends',
                             query_string=dict(id=a1_id))
         data = self.OK(response)
-        self.assertEqual(len(data['items']), 1)
-        for item in data['items']:
-            self.assertEqual(item['id'], a1_id)
+        self.assertEqual(len(data['items']), 2)
+        self.assertEqual(data['items'][0]['id'], 1)
+        self.assertEqual(data['items'][1]['id'], a1_id)
 
     def test_mark_domain(self):
         self.login()
@@ -141,9 +140,54 @@ class DomainTestCase(BaseTestCase):
 
         response = self.get('/v1/domain/marked')
         data = self.OK(response)
-        self.assertEqual(len(data['items']), 1)
-        for item in data['items']:
-            self.assertEqual(item['id'], id)
+        self.assertEqual(len(data['items']), 2)
+    
+    def test_learn_domain(self):
+        self.login()
+        '''
+        infinity 1
+        |      |
+        DEP0 2 DEP1 3
+        |      |
+        DEP2 4 -
+        |
+        DEP3 5
+        '''
+        response = self.post('/v1/domain',
+                             json=dict(title='DEP0',
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        dep0_id = data['items'][0]['id']
+        response = self.post('/v1/domain',
+                             json=dict(title='DEP1',
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        dep1_id = data['items'][0]['id']        
+        response = self.post('/v1/domain',
+                             json=dict(title='DEP2',
+                                       dependeds=[dep0_id, dep1_id],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        dep2_id = data['items'][0]['id']
+        response = self.post('/v1/domain',
+                             json=dict(title='DEP3',
+                                       dependeds=[dep2_id],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        dep3_id = data['items'][0]['id']
+
+        response = self.get('/v1/domain/depends',
+                            query_string=dict(
+                                id=dep3_id
+                            ))
+        data = self.OK(response)
+        self.format(data['items'])
+        self.assertEqual(len(data['items']), 5)
+        self.assertEqual(data['items'][0]['id'], 1)
+        self.assertEqual(data['items'][3]['id'], dep2_id)
+        self.assertEqual(data['items'][4]['id'], dep3_id)  
 
     # def test_put_domain(self):
     #     self.login()

@@ -73,10 +73,9 @@ class CollectionInstance(Resource):
             domain_id=data['domain_id'],
         )
 
-        domain = Domain.query.get_or_404(data['domain_id'])
-
-        for dep in domain.dependeds:
-            assert dep.ancestor.is_certified(current_user)
+        # domain = Domain.query.get_or_404(data['domain_id'])
+        # for dep in domain.dependeds:
+        #     assert dep.ancestor.is_certified(current_user)
 
         resources = data['resources']
 

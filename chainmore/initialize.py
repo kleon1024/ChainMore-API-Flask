@@ -39,7 +39,7 @@ def root_domain():
 
     admin.mark(domain)
 
-    domain.certify(User.query.filter_by(username='kleon').first())
+    # domain.certify(User.query.filter_by(username='kleon').first())
 
     domain.dep(domain)
     domain.agg(domain)
