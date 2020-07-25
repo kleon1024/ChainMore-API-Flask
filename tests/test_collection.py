@@ -36,7 +36,6 @@ class CollectionTestCase(BaseTestCase):
                                  resources=[resource_id],
                              ))
         data = self.OK(response)
-        self.assertEqual(data['items'][0]['referenceds'][0]['id'], resource_id)
 
         self.logout()
 
@@ -73,10 +72,6 @@ class CollectionTestCase(BaseTestCase):
                 resources=[resource_id, resource_id, resource_id],
             ))
         data = self.OK(response)
-        referenceds = data['items'][0]['referenceds']
-        self.assertEqual(len(referenceds), 1)
-        self.assertEqual(referenceds[0]['id'], resource_id)
-
         self.logout()
 
     def test_collection_ordered_resource(self):
@@ -137,10 +132,6 @@ class CollectionTestCase(BaseTestCase):
                              ))
         data = self.OK(response)
         collection_id = data['items'][0]['id']
-        referenceds = data['items'][0]['referenceds']
-
-        self.assertEqual(referenceds[0]['id'], resource_id)
-        self.assertEqual(referenceds[1]['id'], resource2_id)
 
         response = self.put('/v1/collection',
                             json=dict(
@@ -151,8 +142,5 @@ class CollectionTestCase(BaseTestCase):
                                 resources=[resource3_id, resource2_id],
                             ))
         data = self.OK(response)
-        referenceds = data['items'][0]['referenceds']
-        self.assertEqual(referenceds[0]['id'], resource3_id)
-        self.assertEqual(referenceds[1]['id'], resource2_id)
 
         self.logout()

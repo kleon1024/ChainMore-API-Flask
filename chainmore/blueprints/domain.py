@@ -171,28 +171,28 @@ class DomainWatch(Resource):
 class DomainCollections(Resource):
     def get(self):
         id = request.args.get('id')
-        offset = request.args.get('offset')
-        limit = request.args.get('limit')
+        offset = int(request.args.get('offset'))
+        limit = int(request.args.get('limit'))
         order = request.args.get('order')
 
         domain = Domain.query.get_or_404(id)
 
         if order == 'time_desc':
-            order_by = Collection.timestamp.desc()
-        elif order == 'time_incr':
-            order_by = Collection.timestamp.incr()
+            order_by = Collection.modify_time.desc()
+        elif order == 'time_asc':
+            order_by = Collection.modify_time.asc()
         elif order == 'collect':
             order_by = Collection.collectors.count()
         else:
-            order_by = Collection.timestamp.desc()
+            order_by = Collection.modify_time.desc()
+
+        aggs = [agg.descendant_id for agg in domain.aggregateds]
 
         collections = Collection.query.filter(
-            Collection.domain_id.in_([
-                agg.descendant_id for agg in domain.aggregateds
-            ])).order_by(order_by).paginate(offset, limit).items
+            Collection.domain_id.in_(aggs)).order_by(order_by).paginate(offset, limit).items
 
         rs = [collection.s for collection in collections]
-        return response("OK", items=rs)
+        return response("OK", items=rs, aggs=aggs)
 
 
 # class DomainCerification(Resource):

@@ -362,10 +362,10 @@ class Collection(db.Model):
 
     def resource_indicators(self):
         d = {
-            1 : 'text',
-            2 : 'image',
-            3 : 'audio',
-            4 : 'video'
+            1: 'text',
+            2: 'image',
+            3: 'audio',
+            4: 'video'
         }
         indictor = set()
         for ref in self.referenceds:
@@ -1038,25 +1038,25 @@ class Domain(db.Model):
                                  cascade='all')
 
     aggregateds = db.relationship('Aggregate',
-                                  foreign_keys=[Aggregate.descendant_id],
+                                  foreign_keys=[Aggregate.ancestor_id],
                                   back_populates='descendant',
                                   lazy='dynamic',
                                   cascade='all')
 
     aggregators = db.relationship('Aggregate',
-                                  foreign_keys=[Aggregate.ancestor_id],
+                                  foreign_keys=[Aggregate.descendant_id],
                                   back_populates='ancestor',
                                   lazy='dynamic',
                                   cascade='all')
 
     dependants = db.relationship('Depend',
-                                 foreign_keys=[Depend.descendant_id],
+                                 foreign_keys=[Depend.ancestor_id],
                                  back_populates='descendant',
                                  lazy='dynamic',
                                  cascade='all')
 
     dependeds = db.relationship('Depend',
-                                foreign_keys=[Depend.ancestor_id],
+                                foreign_keys=[Depend.descendant_id],
                                 back_populates='ancestor',
                                 lazy='dynamic',
                                 cascade='all')
@@ -1082,30 +1082,26 @@ class Domain(db.Model):
     def dep(self, dependant):
         for depended in Depend.query.filter(
                 Depend.descendant_id == self.id).all():
-            if dependant.dependeds.filter_by(ancestor_id=depended.ancestor_id).count() == 0:
-                db.session.add(
-                    Depend(ancestor_id=depended.ancestor_id,
-                           descendant_id=dependant.id,
-                           distance=depended.distance + 1))
-        if dependant.dependeds.filter_by(ancestor_id=dependant.id).count() == 0:
             db.session.add(
-                Depend(ancestor_id=dependant.id,
+                Depend(ancestor_id=depended.ancestor_id,
                        descendant_id=dependant.id,
-                       distance=0))
+                       distance=depended.distance + 1))
+        db.session.add(
+            Depend(ancestor_id=dependant.id,
+                   descendant_id=dependant.id,
+                   distance=0))
 
     def agg(self, aggregated):
         for aggregator in Aggregate.query.filter(
                 Aggregate.descendant_id == self.id):
-            if aggregated.aggregators.filter_by(ancestor_id=aggregator.ancestor_id).count() == 0:
-                db.session.add(
-                    Aggregate(ancestor_id=aggregator.ancestor_id,
-                              descendant_id=aggregated.id,
-                              distance=aggregator.distance + 1))
-        if aggregated.aggregators.filter_by(ancestor_id=aggregated.id).count() == 0:
             db.session.add(
-                Aggregate(ancestor_id=aggregated.id,
+                Aggregate(ancestor_id=aggregator.ancestor_id,
                           descendant_id=aggregated.id,
-                          distance=0))
+                          distance=aggregator.distance + 1))
+        db.session.add(
+            Aggregate(ancestor_id=aggregated.id,
+                      descendant_id=aggregated.id,
+                      distance=0))
 
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):
