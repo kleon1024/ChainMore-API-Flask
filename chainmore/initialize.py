@@ -19,8 +19,8 @@ fake = Faker(locale='zh_CN')
 def admin():
     if User.query.filter_by(username='kleon').first() is None:
         admin = User(username='kleon',
-                    email='dingli.cm@gmail.com',
-                    bio='阡陌 - 连接更多')
+                     email='dingli.cm@gmail.com',
+                     bio='阡陌 - 连接更多')
 
         admin.set_password('hellokleon')
         admin.set_role('Administrator')
@@ -41,8 +41,14 @@ def root_domain():
 
     # domain.certify(User.query.filter_by(username='kleon').first())
 
-    domain.dep(domain)
-    domain.agg(domain)
+    db.session.add(Depend(ancestor_id=domain.id,
+                          descendant_id=domain.id,
+                          distance=0))
+                          
+    db.session.add(Aggregate(ancestor_id=domain.id,
+                             descendant_id=domain.id,
+                             distance=0))
+
     db.session.commit()
 
 
@@ -51,7 +57,6 @@ def resource_media_type():
     course = ResourceType(name="course")
     book = ResourceType(name="book")
 
-    
     text = MediaType(name="text")
     image = MediaType(name="image")
     audio = MediaType(name="audio")
@@ -59,7 +64,7 @@ def resource_media_type():
 
     db.session.add(article)
     db.session.add(course)
-    
+
     db.session.add(text)
     db.session.add(image)
     db.session.add(audio)
@@ -75,7 +80,7 @@ def resource_media_type():
     db.session.add(Classify(classifier_id=course.id, classified_id=text.id))
     db.session.add(Classify(classifier_id=course.id, classified_id=image.id))
     db.session.add(Classify(classifier_id=course.id, classified_id=audio.id))
-    db.session.add(Classify(classifier_id=course.id, classified_id=video.id))  
+    db.session.add(Classify(classifier_id=course.id, classified_id=video.id))
 
     db.session.commit()
 

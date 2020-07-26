@@ -16,6 +16,14 @@ domain_bp = Blueprint('domain', __name__)
 api = Api(domain_bp)
 
 
+class Domains(Resource):
+    # @jwt_required
+    # @admin_required
+    def get(self):
+        items = [d.s for d in Domain.query.all()]
+        return response('OK', items=items)
+
+
 class DomainMarked(Resource):
     @jwt_required
     def get(self):
@@ -95,20 +103,65 @@ class DomainInstance(Resource):
         db.session.add(r)
         db.session.commit()
 
+        depend_map = {}
+
         for depended in certified_dependeds:
-            depended.dep(r)
+            for depended in Depend.query.filter(
+                    Depend.descendant_id == depended.id).all():
+                key = (depended.ancestor_id, r.id)
+                if key not in depend_map:
+                    d = Depend(ancestor_id=depended.ancestor_id,
+                               descendant_id=r.id,
+                               distance=depended.distance + 1)
+                    depend_map[key] = dict(
+                        distance=depended.distance + 1,
+                        depend=d
+                    )
+                    db.session.add(d)
+                else:
+                    value = depend_map[key]
+                    if value['distance'] < depended.distance + 1:
+                        value['depend'].distance = depended.distance + 1
+
+        db.session.add(
+            Depend(ancestor_id=r.id,
+                   descendant_id=r.id,
+                   distance=0))
+
+        aggregate_map = {}
+
         for aggregator in certified_aggregators:
-            aggregator.agg(r)
+            for aggregator in Aggregate.query.filter(
+                    Aggregate.descendant_id == aggregator.id):
+                key = (aggregator.ancestor_id, r.id)
+                if key not in aggregate_map:
+                    a = Aggregate(ancestor_id=aggregator.ancestor_id,
+                                  descendant_id=r.id,
+                                  distance=aggregator.distance + 1)
+                    aggregate_map[key] = dict(
+                        distance=aggregator.distance + 1,
+                        aggregate=a
+                    )
+                    db.session.add(a)
+                else:
+                    value = aggregate_map[key]
+                    if value['distance'] < aggregator.distance + 1:
+                        value['aggregate'].distance = aggregator.distance + 1
+
+        db.session.add(
+            Aggregate(ancestor_id=r.id,
+                      descendant_id=r.id,
+                      distance=0))
 
         db.session.commit()
         return response('OK', items=[r.s])
 
-    # Cost: 10
+    # Cost: 100
     @jwt_required
     def put(self):
         data = request.get_json()
 
-        r = Collection.query.get_or_404(data['id'])
+        r = Domain.query.get_or_404(data['id'])
         r.title = data['title']
         r.intro = data.get('intro', '')
 
@@ -118,26 +171,80 @@ class DomainInstance(Resource):
         new_aggregators = set(data['aggregators'])
         assert (len(new_aggregators) == 1)
 
-        old_dependeds = set(
-            [dep.id for dep in r.dependeds.filter_by(distance=1).all()])
-        r.dependeds.filter(
-            Depend.descendant_id.in_(old_dependeds - new_dependeds)).delete(
-                synchronize_session=False)
-        for depended in new_dependeds - old_dependeds:
+        certified_dependeds = set()
+        for depended in new_dependeds:
             depended = Domain.query.get_or_404(depended)
-            # assert (depended.is_certified(current_user))
-            depended.dep(r)
+            # assert depended.is_certified(current_user)
+            certified_dependeds.add(depended.id)
+
+        certified_aggregators = set()
+        for aggregator in new_aggregators:
+            aggregator = Domain.query.get_or_404(aggregator)
+            # assert aggregator.is_certified(current_user)
+            certified_aggregators.add(aggregator.id)
+
+        old_dependeds = set(
+            [dep.ancestor_id for dep in r.dependeds.filter_by(distance=1).all()])
+        removable_dependeds = old_dependeds - certified_dependeds
+
+        for removable_depended in removable_dependeds:
+            for (ancestor_id, ancestor_distance) in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
+                    Depend.descendant_id == removable_depended).all()]:
+                for (descendant_id, descendant_distance) in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
+                    d = Depend.query.filter(
+                        Depend.ancestor_id == ancestor_id,
+                        Depend.descendant_id == descendant_id,
+                        Depend.distance == ancestor_distance + descendant_distance + 1).first()
+                    if d is not None:
+                        db.session.delete(d)
+        db.session.commit()
+
+        for depended in certified_dependeds - old_dependeds:
+            for ancestor_id, ancestor_distance in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
+                Depend.descendant_id == depended
+            ).all()]:
+                for descendant_id, descendant_distance in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
+                    old_d = Depend.query.filter(
+                            Depend.ancestor_id == ancestor_id,
+                            Depend.descendant_id == descendant_id).order_by(Depend.distance.desc()).first()
+                    if old_d is not None:
+                        if old_d.distance < ancestor_distance + descendant_distance + 1:
+                            old_d.distance = ancestor_distance + descendant_distance + 1
+                    else:
+                        d = Depend(ancestor_id=ancestor_id, descendant_id=descendant_id,
+                                distance=ancestor_distance + descendant_distance + 1)
+                        db.session.add(d)
 
         old_aggregators = set(
-            [agg.id for agg in r.aggregators.filter_by(distance=1).all()])
-        r.aggregators.filter(
-            Aggregate.descendant_id.in_(old_aggregators -
-                                        new_aggregators)).delete(
-                                            synchronize_session=False)
-        for aggregator in new_aggregators - old_aggregators:
-            aggregator = Domain.query.get_or_404(aggregator)
-            # assert (aggregator.is_certified(current_user))
-            aggregator.agg(r)
+            [agg.ancestor_id for agg in r.aggregators.filter_by(distance=1).all()])
+        removable_aggregates = old_aggregators - certified_aggregators
+        for removable_aggregate in removable_aggregates:
+            for (ancestor_id, ancestor_distance) in [(agg.ancestor_id, agg.distance) for agg in Aggregate.query.filter(
+                    Aggregate.descendant_id == removable_aggregate).all()]:
+                for (descendant_id, descendant_distance) in [(agg.descendant_id, agg.distance) for agg in r.aggregateds]:
+                    d = Aggregate.query.filter(
+                        Aggregate.ancestor_id == ancestor_id,
+                        Aggregate.descendant_id == descendant_id,
+                        Aggregate.distance == ancestor_distance + descendant_distance + 1).first()
+                    if d is not None:
+                        db.session.delete(d)
+        db.session.commit()
+
+        for aggregate in certified_aggregators - old_aggregators:
+            for ancestor_id, ancestor_distance in [(agg.ancestor_id, agg.distance) for agg in Aggregate.query.filter(
+                Aggregate.descendant_id == aggregate
+            ).all()]:
+                for descendant_id, descendant_distance in [(agg.descendant_id, agg.distance) for agg in r.aggregateds]:
+                    old_a = Aggregate.query.filter(
+                            Aggregate.ancestor_id == ancestor_id,
+                            Aggregate.descendant_id == descendant_id).order_by(Aggregate.distance.desc()).first()
+                    if old_a is not None:
+                        if old_a.distance < ancestor_distance + descendant_distance + 1:
+                            old_a.distance = ancestor_distance + descendant_distance + 1
+                    else:
+                        a = Aggregate(ancestor_id=ancestor_id, descendant_id=descendant_id,
+                                    distance=ancestor_distance + descendant_distance + 1)
+                        db.session.add(a)
 
         db.session.commit()
         return response('OK', items=[r.s])
@@ -181,7 +288,7 @@ class DomainCollections(Resource):
             order_by = Collection.modify_time.desc()
         elif order == 'time_asc':
             order_by = Collection.modify_time.asc()
-        elif order == 'collect':
+        elif order == 'collect_count':
             order_by = Collection.collectors.count()
         else:
             order_by = Collection.modify_time.desc()
@@ -265,67 +372,83 @@ class DomainAggregators(Resource):
     @admin_required
     def get(self):
         id = request.args.get('id')
-        distances = request.args.get('distances', [0, 999999])
+        distance = request.args.get('distance', 1)
         domain = Domain.query.get_or_404(id)
         rs = [
-            agg.s for agg in Aggregate.query.filter(
-                Aggregate.descendant_id == domain.id, Aggregate.distance >=
-                distances[0], Aggregate.distance <= distances[1]).all()
+            agg.s for agg in Aggregate.query.filter(Aggregate.descendant_id == domain.id,
+                                                    Aggregate.distance <= distance).
+            order_by(Depend.distance.desc()).all()
         ]
         return response('OK', items=rs)
 
 
 class DomainAggregateds(Resource):
-    @jwt_required
-    @admin_required
+    @ jwt_required
+    @ admin_required
     def get(self):
         id = request.args.get('id')
-        distances = request.args.get('distances', [0, 999999])
+        distance = request.args.get('distance', 1)
         domain = Domain.query.get_or_404(id)
         rs = [
-            agg.s for agg in Aggregate.query.filter(
-                Aggregate.ancestor_id == domain.id, Aggregate.distance >=
-                distances[0], Aggregate.distance <= distances[1]).all()
+            agg.s for agg in Aggregate.query.filter(Aggregate.ancestor_id == domain.id,
+                                                    Aggregate.distance <= distance).
+            order_by(Depend.distance.asc()).all()
         ]
         return response('OK', items=rs)
 
 
+class DomainAggregate(Resource):
+    # @jwt_required
+    # @admin_required
+    def get(self):
+        rs = [agg.s for agg in Aggregate.query.filter(
+            Aggregate.distance == 1).all()]
+        return response('OK', items=rs)
+
+
 class DomainDependeds(Resource):
-    @jwt_required
-    @admin_required
+    @ jwt_required
+    @ admin_required
     def get(self):
         id = request.args.get('id')
-        distances = request.args.get('distances', [0, 999999])
+        distance = request.args.get('distance', 1)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.s
             for dep in Depend.query.filter(Depend.descendant_id == domain.id,
-                                           Depend.distance >= distances[0],
-                                           Depend.distance <= distances[1]).
+                                           Depend.distance <= distance).
             order_by(Depend.distance.desc()).all()
         ]
         return response('OK', items=rs)
 
 
 class DomainDependants(Resource):
-    @jwt_required
-    @admin_required
+    @ jwt_required
+    @ admin_required
     def get(self):
         id = request.args.get('id')
-        distances = request.args.get('distances', [0, 999999])
+        distance = request.args.get('distance', 1)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.s
             for dep in Depend.query.filter(Depend.ancestor_id == domain.id,
-                                           Depend.distance >= distances[0],
-                                           Depend.distance <= distances[1]).
+                                           Depend.distance <= distance).
             order_by(Depend.distance.asc()).all()
         ]
         return response('OK', items=rs)
 
 
+class DomainDepend(Resource):
+    # @jwt_required
+    # @admin_required
+    def get(self):
+        rs = [dep.s for dep in Depend.query.filter(
+            Depend.distance == 1).all()]
+        return response('OK', items=rs)
+
+
 class DomainDepends(Resource):
-    @jwt_required
+    @ jwt_required
     def get(self):
         id = request.args.get('id')
         domain = Domain.query.get_or_404(id)
@@ -436,9 +559,14 @@ api.add_resource(DomainAggregateds, '/aggregateds')
 api.add_resource(DomainDependeds, '/dependeds')
 api.add_resource(DomainDependants, '/dependants')
 
+api.add_resource(DomainAggregate, '/aggregate/all')
+api.add_resource(DomainDepend, '/depend/all')
+
 api.add_resource(DomainDepends, '/depends')
 # api.add_resource(RoadMapInstance, '/roadmap')
 # api.add_resource(RoadMapLearn, '/roadmap/learn')
 api.add_resource(DomainMarked, '/marked')
 api.add_resource(DomainCreated, '/created')
 api.add_resource(DomainMark, '/mark')
+
+api.add_resource(Domains, '/all')

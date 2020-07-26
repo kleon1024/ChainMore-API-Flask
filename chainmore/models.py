@@ -994,7 +994,7 @@ class Roadmap(db.Model):
 @whooshee.register_model('title', 'intro')
 class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String, unique=True, index=True)
+    title = db.Column(db.String, index=True)
     intro = db.Column(db.String, default="")
 
     deleting = db.Column(db.Boolean, default=False)
@@ -1078,31 +1078,7 @@ class Domain(db.Model):
             return False
         return self.certifiers.filter_by(
             certifier_id=user.id).first() is not None
-
-    def dep(self, dependant):
-        for depended in Depend.query.filter(
-                Depend.descendant_id == self.id).all():
-            db.session.add(
-                Depend(ancestor_id=depended.ancestor_id,
-                       descendant_id=dependant.id,
-                       distance=depended.distance + 1))
-        db.session.add(
-            Depend(ancestor_id=dependant.id,
-                   descendant_id=dependant.id,
-                   distance=0))
-
-    def agg(self, aggregated):
-        for aggregator in Aggregate.query.filter(
-                Aggregate.descendant_id == self.id):
-            db.session.add(
-                Aggregate(ancestor_id=aggregator.ancestor_id,
-                          descendant_id=aggregated.id,
-                          distance=aggregator.distance + 1))
-        db.session.add(
-            Aggregate(ancestor_id=aggregated.id,
-                      descendant_id=aggregated.id,
-                      distance=0))
-
+            
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
