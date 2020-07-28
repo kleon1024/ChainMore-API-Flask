@@ -3,6 +3,8 @@
     :author: Kleon
     :url: https://github.com/kleon1024
 """
+from datetime import datetime
+
 from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
@@ -28,6 +30,17 @@ class CollectionCreated(Resource):
     def get(self):
         items = [collection.s for collection in
                  current_user.collections]
+        return response('OK', items=items)
+
+
+class CollectionReferenceds(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args['id']
+        collection = Collection.query.get_or_404(id)
+
+        items = [ref.referenced.s for ref in
+                 collection.referenceds]
         return response('OK', items=items)
 
 
@@ -102,6 +115,7 @@ class CollectionInstance(Resource):
         r.title = data['title']
         r.description = data['description']
         r.domain_id = data['domain_id']
+        r.modify_time = datetime.utcnow()
 
         resources = data['resources']
         r.ref(resources)
@@ -381,3 +395,4 @@ api.add_resource(CollectionInstance, '')
 api.add_resource(CollectionCollected, '/collected')
 api.add_resource(CollectionCreated, '/created')
 api.add_resource(CollectionCollect, '/collect')
+api.add_resource(CollectionReferenceds, '/referenceds')

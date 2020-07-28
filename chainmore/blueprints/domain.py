@@ -3,6 +3,7 @@
     :author: Kleon
     :url: https://github.com/kleon1024
 """
+from datetime import datetime
 from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
@@ -20,7 +21,10 @@ class Domains(Resource):
     # @jwt_required
     # @admin_required
     def get(self):
-        items = [d.s for d in Domain.query.all()]
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 1))
+        items = [d.s for d in Domain.query.order_by(
+            Domain.modify_time.desc()).paginate(offset, limit).items]
         return response('OK', items=items)
 
 
@@ -164,6 +168,7 @@ class DomainInstance(Resource):
         r = Domain.query.get_or_404(data['id'])
         r.title = data['title']
         r.intro = data.get('intro', '')
+        r.modify_time = datetime.utcnow()
 
         new_dependeds = set(data['dependeds'])
         assert (len(new_dependeds) > 0)
@@ -205,14 +210,14 @@ class DomainInstance(Resource):
             ).all()]:
                 for descendant_id, descendant_distance in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
                     old_d = Depend.query.filter(
-                            Depend.ancestor_id == ancestor_id,
-                            Depend.descendant_id == descendant_id).order_by(Depend.distance.desc()).first()
+                        Depend.ancestor_id == ancestor_id,
+                        Depend.descendant_id == descendant_id).order_by(Depend.distance.desc()).first()
                     if old_d is not None:
                         if old_d.distance < ancestor_distance + descendant_distance + 1:
                             old_d.distance = ancestor_distance + descendant_distance + 1
                     else:
                         d = Depend(ancestor_id=ancestor_id, descendant_id=descendant_id,
-                                distance=ancestor_distance + descendant_distance + 1)
+                                   distance=ancestor_distance + descendant_distance + 1)
                         db.session.add(d)
 
         old_aggregators = set(
@@ -236,14 +241,14 @@ class DomainInstance(Resource):
             ).all()]:
                 for descendant_id, descendant_distance in [(agg.descendant_id, agg.distance) for agg in r.aggregateds]:
                     old_a = Aggregate.query.filter(
-                            Aggregate.ancestor_id == ancestor_id,
-                            Aggregate.descendant_id == descendant_id).order_by(Aggregate.distance.desc()).first()
+                        Aggregate.ancestor_id == ancestor_id,
+                        Aggregate.descendant_id == descendant_id).order_by(Aggregate.distance.desc()).first()
                     if old_a is not None:
                         if old_a.distance < ancestor_distance + descendant_distance + 1:
                             old_a.distance = ancestor_distance + descendant_distance + 1
                     else:
                         a = Aggregate(ancestor_id=ancestor_id, descendant_id=descendant_id,
-                                    distance=ancestor_distance + descendant_distance + 1)
+                                      distance=ancestor_distance + descendant_distance + 1)
                         db.session.add(a)
 
         db.session.commit()
@@ -369,7 +374,6 @@ class DomainCollections(Resource):
 
 class DomainAggregators(Resource):
     @jwt_required
-    @admin_required
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
@@ -377,14 +381,13 @@ class DomainAggregators(Resource):
         rs = [
             agg.s for agg in Aggregate.query.filter(Aggregate.descendant_id == domain.id,
                                                     Aggregate.distance <= distance).
-            order_by(Depend.distance.desc()).all()
+            order_by(Aggregate.distance.desc()).all()
         ]
         return response('OK', items=rs)
 
 
 class DomainAggregateds(Resource):
-    @ jwt_required
-    @ admin_required
+    @jwt_required
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
@@ -392,7 +395,35 @@ class DomainAggregateds(Resource):
         rs = [
             agg.s for agg in Aggregate.query.filter(Aggregate.ancestor_id == domain.id,
                                                     Aggregate.distance <= distance).
-            order_by(Depend.distance.asc()).all()
+            order_by(Aggregate.distance.asc()).all()
+        ]
+        return response('OK', items=rs)
+
+
+class DomainInstanceAggregators(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        distance = request.args.get('distance', 1)
+        domain = Domain.query.get_or_404(id)
+        rs = [
+            agg.ancestor.s for agg in Aggregate.query.filter(Aggregate.descendant_id == domain.id,
+                                                             Aggregate.distance <= distance).
+            order_by(Aggregate.distance.desc()).all()
+        ]
+        return response('OK', items=rs)
+
+
+class DomainInstanceAggregateds(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        distance = request.args.get('distance', 1)
+        domain = Domain.query.get_or_404(id)
+        rs = [
+            agg.descendant.s for agg in Aggregate.query.filter(Aggregate.ancestor_id == domain.id,
+                                                               Aggregate.distance <= distance).
+            order_by(Aggregate.distance.asc()).all()
         ]
         return response('OK', items=rs)
 
@@ -407,8 +438,7 @@ class DomainAggregate(Resource):
 
 
 class DomainDependeds(Resource):
-    @ jwt_required
-    @ admin_required
+    @jwt_required
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
@@ -423,14 +453,43 @@ class DomainDependeds(Resource):
 
 
 class DomainDependants(Resource):
-    @ jwt_required
-    @ admin_required
+    @jwt_required
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.s
+            for dep in Depend.query.filter(Depend.ancestor_id == domain.id,
+                                           Depend.distance <= distance).
+            order_by(Depend.distance.asc()).all()
+        ]
+        return response('OK', items=rs)
+
+
+class DomainInstanceDependeds(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        distance = request.args.get('distance', 1)
+        domain = Domain.query.get_or_404(id)
+        rs = [
+            dep.ancestor.s
+            for dep in Depend.query.filter(Depend.descendant_id == domain.id,
+                                           Depend.distance <= distance).
+            order_by(Depend.distance.desc()).all()
+        ]
+        return response('OK', items=rs)
+
+
+class DomainInstanceDependants(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        distance = request.args.get('distance', 1)
+        domain = Domain.query.get_or_404(id)
+        rs = [
+            dep.descendant.s
             for dep in Depend.query.filter(Depend.ancestor_id == domain.id,
                                            Depend.distance <= distance).
             order_by(Depend.distance.asc()).all()
@@ -448,7 +507,7 @@ class DomainDepend(Resource):
 
 
 class DomainDepends(Resource):
-    @ jwt_required
+    @jwt_required
     def get(self):
         id = request.args.get('id')
         domain = Domain.query.get_or_404(id)
@@ -558,6 +617,11 @@ api.add_resource(DomainAggregators, '/aggregators')
 api.add_resource(DomainAggregateds, '/aggregateds')
 api.add_resource(DomainDependeds, '/dependeds')
 api.add_resource(DomainDependants, '/dependants')
+
+api.add_resource(DomainInstanceAggregators, '/i/aggregators')
+api.add_resource(DomainInstanceAggregateds, '/i/aggregateds')
+api.add_resource(DomainInstanceDependeds, '/i/dependeds')
+api.add_resource(DomainInstanceDependants, '/i/dependants')
 
 api.add_resource(DomainAggregate, '/aggregate/all')
 api.add_resource(DomainDepend, '/depend/all')
