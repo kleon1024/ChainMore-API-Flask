@@ -9,7 +9,7 @@ from flask_restful import Api
 from flask_restful import Resource as RestfulResource
 
 from ..utils import (response)
-from ..models import Resource, MediaType, ResourceType
+from ..models import Resource, MediaType, ResourceType, Collection, Reference
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -39,6 +39,29 @@ class ResourceCreated(RestfulResource):
         items = [resource.s for resource in
                  current_user.resources]
         return response('OK', items=items)
+
+
+class ResourceCollections(RestfulResource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        offset = int(request.args.get('offset'))
+        limit = int(request.args.get('limit'))
+        order = request.args.get('order')
+
+        resource = Resource.query.get_or_404(id)
+
+        if order == 'time_desc':
+            order_by = Reference.timestamp.desc()
+        elif order == 'time_asc':
+            order_by = Reference.timestamp.asc()
+        else:
+            order_by = Reference.timestamp.desc()
+
+        collections = [ref.referencer for ref in resource.referencers.order_by(
+            order_by).paginate(offset, limit).items]
+        rs = [collection.s for collection in collections]
+        return response("OK", items=rs)
 
 
 class ResourceInstance(RestfulResource):
@@ -219,3 +242,4 @@ api.add_resource(ResourceStar, '/star')
 api.add_resource(ResourceCollected, '/collected')
 api.add_resource(ResourceStared, '/stared')
 api.add_resource(ResourceCreated, '/created')
+api.add_resource(ResourceCollections, '/collections')

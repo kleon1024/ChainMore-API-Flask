@@ -21,17 +21,17 @@ class Search(Resource):
         if q == '':
             return response("OK", items=[])
         offset = int(request.args.get('offset', 1))
-        limit = int(request.args.get('limit', 20))
+        limit = int(request.args.get('limit', 10))
 
         type = request.args.get('type', '')
         if type == 'user':
             users = User.query.whooshee_search(q).paginate(offset, limit).items
-            users = [user.serialize() for user in users]
+            users = [user.s for user in users]
             return response("OK", items=users, type='user')
         if type == 'domain':
             domains = Domain.query.whooshee_search(q).paginate(offset,
                                                                limit).items
-            domains = [domain.serialize(level=1) for domain in domains]
+            domains = [domain.s for domain in domains]
             return response("OK", items=domains, type='domain')
         return response("OK", items=[])
 

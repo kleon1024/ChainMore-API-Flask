@@ -26,8 +26,8 @@ blacklist = set()
 auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
-access_token_expire_time = datetime.timedelta(days=120)
-refresh_token_expire_time = datetime.timedelta(days=300)
+access_token_expire_time = datetime.timedelta(days=1)
+refresh_token_expire_time = datetime.timedelta(days=30)
 
 
 @jwt.user_loader_callback_loader
@@ -71,11 +71,10 @@ class SignIn(Resource):
         username = data["username"]
         password = data["password"]
 
-        if validate_email(username, 18):
-            user = User.query.filter_by(email=username.lower()).first()
-        elif validate_username(username, 20):
-            user = User.query.filter_by(username=username.lower()).first()
-        
+        if not validate_username(username, 20):
+            return response("BAD_REQUEST")
+
+        user = User.query.filter_by(username=username.lower()).first()
         if user is not None and user.validate_password(password):
             username = user.username
             access_token = create_access_token(

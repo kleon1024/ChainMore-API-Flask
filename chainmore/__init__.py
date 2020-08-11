@@ -67,6 +67,25 @@ def register_errorhandlers(app):
 
 
 def register_commands(app):
+
+    @click.option('--username', required=True)
+    @click.option('--role', required=True)
+    @app.cli.command()
+    def create_user(username, role):
+        """Create User"""
+        click.echo("Creating {}".format(username))
+        from .initialize import add_user
+        add_user(username, role)
+
+    @click.option('--username', required=True)
+    @click.option('--role', required=True)
+    @app.cli.command()
+    def reset_user(username, role):
+        """Create User"""
+        click.echo("Creating {}".format(username))
+        from .initialize import reset_user
+        reset_user(username, role)
+
     @app.cli.command()
     def reset():
         """Reset database"""

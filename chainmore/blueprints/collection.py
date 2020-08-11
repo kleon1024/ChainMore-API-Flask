@@ -34,7 +34,6 @@ class CollectionCreated(Resource):
 
 
 class CollectionReferenceds(Resource):
-    @jwt_required
     def get(self):
         id = request.args['id']
         collection = Collection.query.get_or_404(id)

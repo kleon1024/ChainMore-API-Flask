@@ -536,11 +536,11 @@ class Mark(db.Model):
 @whooshee.register_model('username')
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), unique=True, index=True)
-    email = db.Column(db.String(254), unique=True, index=True)
-    phone = db.Column(db.String(30), unique=True, index=True)
+    username = db.Column(db.String(64), unique=True, index=True, default="")
+    email = db.Column(db.String(254), unique=True, index=True, default="")
+    phone = db.Column(db.String(30), unique=True, index=True, default="")
     password_hash = db.Column(db.String(128))
-    bio = db.Column(db.String(120))
+    bio = db.Column(db.String(120), default="")
 
     locked = db.Column(db.Boolean, default=False)
     active = db.Column(db.Boolean, default=True)
@@ -1078,7 +1078,7 @@ class Domain(db.Model):
             return False
         return self.certifiers.filter_by(
             certifier_id=user.id).first() is not None
-            
+
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
@@ -1168,3 +1168,33 @@ class Domain(db.Model):
 #             "votes": len(self.voters),
 #             "replies": len(self.replies)
 #         }
+
+
+# @whooshee.register_model('')
+# class TodoItem(db.Model):
+#     id = db.Column(db.Integer, primary=True)
+#     title = db.Column(db.String, default="")
+
+#     create_time = db.Column(db.DateTime, default=datetime.utcnow)
+#     modify_time = db.Column(db.DateTime, default=datetime.utcnow)
+
+#     due_time = db.Column(db.DateTime, default=datetime.utcnow)
+#     remind_time = db.Column(db.DateTime, default=datetime.utcnow)
+
+#     finished = db.Column(db.Boolean, default=False)
+#     archived = db.Column(db.Boolean, default=False)
+
+
+# class TodoRefResource(db.Model):
+#     resource_id = db.Column(db.Integer, db.ForeignKey(
+#         'resource.id'), primary_key=True)
+#     todo_id = db.Column(db.Integer, db.ForeignKey(
+#         'todo_item.id'), primary_key=True)
+#     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+#     resource = db.relationship('Resource', foreign_keys=[resource_id],
+#                                back_populates='todo_items', lazy='joined')
+#     todo = db.relationship('TodoItem', foreign_keys=[todo_id],
+#                            back_populates='resources', lazy='joined')
+
+
+

@@ -283,9 +283,9 @@ class DomainWatch(Resource):
 class DomainCollections(Resource):
     def get(self):
         id = request.args.get('id')
-        offset = int(request.args.get('offset'))
-        limit = int(request.args.get('limit'))
-        order = request.args.get('order')
+        offset = int(request.args.get('offset', 1))
+        limit = int(request.args.get('limit', 10))
+        order = request.args.get('order', 'time_desc')
 
         domain = Domain.query.get_or_404(id)
 
@@ -505,6 +505,15 @@ class DomainDepend(Resource):
             Depend.distance == 1).all()]
         return response('OK', items=rs)
 
+class DomainRootDepend(Resource):
+    def get(self):
+        rs = [
+            dep.s for dep in Depend.query.filter(
+                Depend.ancestor_id == 1
+            ).order_by(Depend.distance.asc()).all()
+        ]
+        return response('OK', items=rs)
+
 
 class DomainDepends(Resource):
     @jwt_required
@@ -625,6 +634,7 @@ api.add_resource(DomainInstanceDependants, '/i/dependants')
 
 api.add_resource(DomainAggregate, '/aggregate/all')
 api.add_resource(DomainDepend, '/depend/all')
+api.add_resource(DomainRootDepend, '/depend/root')
 
 api.add_resource(DomainDepends, '/depends')
 # api.add_resource(RoadMapInstance, '/roadmap')
