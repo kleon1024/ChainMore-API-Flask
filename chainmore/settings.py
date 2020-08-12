@@ -84,7 +84,7 @@ class TestingConfig(BaseConfig):
 
 
 class ProductionConfig(BaseConfig):
-    prefix = 'postgresql://chainmore:hellochainmore@database/chainmore_db'
+    prefix = 'postgresql://chainmore:hellochainmore@postgres:5432/chainmore_db'
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', prefix)
     PROPAGATE_EXCEPTIONS = True
 
