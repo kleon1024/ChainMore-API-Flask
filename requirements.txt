@@ -2,7 +2,7 @@
 gunicorn
 yapf
 flake8
-psycopg2
+psycopg2-binary
 
 # Testing
 faker
