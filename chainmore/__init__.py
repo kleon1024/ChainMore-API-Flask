@@ -23,6 +23,7 @@ from .blueprints.main import main_bp
 from .extensions import db, jwt, whooshee
 from .settings import config
 from flask_migrate import Migrate
+from flask_cors import CORS
 
 
 def create_app(config_name=None):
@@ -30,7 +31,8 @@ def create_app(config_name=None):
         config_name = os.getenv('FLASK_CONFIG', 'development')
 
     app = Flask('chainmore')
-
+    CORS(app)
+    
     app.config.from_object(config[config_name])
 
     register_extensions(app)
@@ -115,7 +117,7 @@ def register_commands(app):
         resource_media_type()
         click.echo('Creating collection type...')
         collection_type()
-        
+
         click.echo('Done')
 
     @app.cli.command()
