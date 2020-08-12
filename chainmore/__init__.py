@@ -23,6 +23,7 @@ from .blueprints.main import main_bp
 from .extensions import db, jwt, whooshee
 from .settings import config
 from flask_migrate import Migrate
+from flask_cors import CORS
 
 
 def create_app(config_name=None):
@@ -30,6 +31,7 @@ def create_app(config_name=None):
         config_name = os.getenv('FLASK_CONFIG', 'development')
 
     app = Flask('chainmore')
+    CORS(app, resources={r"/v1/*": {"origins": "*.chainmore.fun"}})
     
     app.config.from_object(config[config_name])
 
@@ -37,12 +39,6 @@ def create_app(config_name=None):
     register_blueprints(app)
     register_commands(app)
     register_errorhandlers(app)
-
-    def after_request(resp):
-        resp.headers['Access-Control-Allow-Origin'] = '*.chainmore.fun'
-        return resp
-
-    app.after_request(after_request)
 
     return app
 
