@@ -31,7 +31,7 @@ def create_app(config_name=None):
         config_name = os.getenv('FLASK_CONFIG', 'development')
 
     app = Flask('chainmore')
-    CORS(app, resources={r"/v1/*": {"origins": "*.chainmore.fun"}})
+    CORS(app, resources={r"/v1/*": {"origins": "https://www.chainmore.fun"}})
     
     app.config.from_object(config[config_name])
 
