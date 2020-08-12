@@ -31,7 +31,6 @@ def create_app(config_name=None):
         config_name = os.getenv('FLASK_CONFIG', 'development')
 
     app = Flask('chainmore')
-    CORS(app)
     
     app.config.from_object(config[config_name])
 
@@ -39,6 +38,8 @@ def create_app(config_name=None):
     register_blueprints(app)
     register_commands(app)
     register_errorhandlers(app)
+
+    CORS(app)
 
     return app
 
