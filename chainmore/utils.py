@@ -104,3 +104,9 @@ def validate_password(password, length):
     if not re.match(pattern, password):
         return False
     return True
+
+def merge(*args):
+    d = {}
+    for arg in args:
+        d.update(arg)
+    return d

@@ -4,6 +4,7 @@
     :url: https://github.com/kleon1024
 """
 from datetime import datetime
+from enum import Enum
 
 from werkzeug.security import (generate_password_hash, check_password_hash)
 
@@ -27,6 +28,10 @@ def s(self):
 db.Model.to_dict = to_dict
 db.Model.s = s
 
+
+class Order(Enum):
+    time_desc = 'time_desc'
+    time_asc = 'time_asc'
 
 class UserRoles:
     LOCKED = 'Locked'
@@ -261,6 +266,13 @@ class Star(db.Model):
                            foreign_keys=[user_id],
                            back_populates='stars',
                            lazy='joined')
+
+    @property
+    def s(self):
+        d = dict(
+            star_time=self.timestamp
+        )
+        return d
 
 
 @whooshee.register_model('description')
@@ -504,6 +516,12 @@ class Collect(db.Model):
                                 back_populates='collectors',
                                 lazy='joined')
 
+    @property
+    def s(self):
+        d = dict(
+            collect_time = self.timestamp
+        )
+        return d
 
 class Watch(db.Model):
     watcher_id = db.Column(db.Integer,
@@ -531,6 +549,13 @@ class Mark(db.Model):
     domain = db.relationship('Domain',
                              back_populates='markers',
                              lazy='joined')
+
+    @property
+    def s(self):
+        d = dict(
+            mark_time = self.timestamp
+        )
+        return d
 
 
 @whooshee.register_model('username')
@@ -1195,6 +1220,3 @@ class Domain(db.Model):
 #                                back_populates='todo_items', lazy='joined')
 #     todo = db.relationship('TodoItem', foreign_keys=[todo_id],
 #                            back_populates='resources', lazy='joined')
-
-
-

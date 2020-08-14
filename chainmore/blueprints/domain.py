@@ -8,7 +8,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
-from ..utils import (response)
+from ..utils import (response, merge)
 from ..models import (Domain, Depend, Aggregate, Collection)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
@@ -31,8 +31,10 @@ class Domains(Resource):
 class DomainMarked(Resource):
     @jwt_required
     def get(self):
-        items = [mark.domain.s for mark in
-                 current_user.markeds]
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 1))
+        items = [merge(mark.domain.s, mark.s) for mark in
+                 current_user.markeds.paginate(offset, limit).items]
         return response('OK', items=items)
 
 

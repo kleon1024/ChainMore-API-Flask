@@ -8,8 +8,8 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api
 from flask_restful import Resource as RestfulResource
 
-from ..utils import (response)
-from ..models import Resource, MediaType, ResourceType, Collection, Reference
+from ..utils import (response, merge)
+from ..models import Resource, MediaType, ResourceType, Collection, Reference, Order, Star
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -20,17 +20,26 @@ api = Api(resource_bp)
 class ResourceStared(RestfulResource):
     @jwt_required
     def get(self):
-        items = [star.resource.s for star in
-                 current_user.stars]
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 1))
+        order = request.args.get('order', Order.time_desc.value)
+        if order == Order.time_desc.value:
+            order_by = Star.timestamp.desc()
+        elif order == Order.time_asc.value:
+            order_by = Star.timestamp.asc()
+        else:
+            order_by = Star.timestamp.desc()
+        items = [merge(star.resource.s, star.s) for star in
+                 current_user.stars.order_by(order_by).paginate(offset, limit).items]
         return response('OK', items=items)
 
 
-class ResourceCollected(RestfulResource):
-    @jwt_required
-    def get(self):
-        items = [collect.collected.s for collect in
-                 current_user.collecteds]
-        return response('OK', items=items)
+# class ResourceCollected(RestfulResource):
+#     @jwt_required
+#     def get(self):
+#         items = [collect.collected.s for collect in
+#                  current_user.collecteds]
+#         return response('OK', items=items)
 
 
 class ResourceCreated(RestfulResource):
@@ -199,6 +208,7 @@ class ResourceTypeInstance(RestfulResource):
 
 
 class ResourceExistence(RestfulResource):
+    @jwt_required
     def post(self):
         data = request.get_json()
         # TODO check url validation
@@ -239,7 +249,7 @@ api.add_resource(MediaTypeInstance, '/media_type')
 api.add_resource(ResourceTypeInstance, '/resource_type')
 api.add_resource(ResourceExistence, '/exist')
 api.add_resource(ResourceStar, '/star')
-api.add_resource(ResourceCollected, '/collected')
+# api.add_resource(ResourceCollected, '/collected')
 api.add_resource(ResourceStared, '/stared')
 api.add_resource(ResourceCreated, '/created')
 api.add_resource(ResourceCollections, '/collections')

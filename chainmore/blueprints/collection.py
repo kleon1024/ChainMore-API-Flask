@@ -9,8 +9,8 @@ from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
-from ..utils import (response)
-from ..models import (Collection, Domain)
+from ..utils import (response, merge)
+from ..models import (Collection, Domain, Collect, Order)
 from ..extensions import db
 
 collection_bp = Blueprint('collection', __name__)
@@ -20,8 +20,17 @@ api = Api(collection_bp)
 class CollectionCollected(Resource):
     @jwt_required
     def get(self):
-        items = [collected.collected.s for collected in
-                 current_user.collecteds]
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 1))
+        order = request.args.get('order', Order.time_desc.value)
+        if order == Order.time_desc.value:
+            order_by = Collect.timestamp.desc()
+        elif order == Order.time_asc.value:
+            order_by = Collect.timestamp.asc()
+        else:
+            order_by = Collect.timestamp.desc()
+        items = [merge(collected.collected.s, collected.s) for collected in
+                 current_user.collecteds.order_by(order_by).paginate(offset, limit).items]
         return response('OK', items=items)
 
 
