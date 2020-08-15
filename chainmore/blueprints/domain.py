@@ -199,12 +199,12 @@ class DomainInstance(Resource):
 
         assert Depend.query.filter(
             Depend.ancestor_id == r.id,
-            Depend.descendant_id._in(
+            Depend.descendant_id.in_(
                 certified_dependeds)).first() is None
 
         assert Aggregate.query.filter(
             Aggregate.ancestor_id == r.id,
-            Aggregate.descendant_id._in(
+            Aggregate.descendant_id.in_(
                 certified_aggregators)).first() is None
 
         old_dependeds = set(
