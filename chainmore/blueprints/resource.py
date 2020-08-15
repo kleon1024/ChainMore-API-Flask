@@ -54,15 +54,15 @@ class ResourceCollections(RestfulResource):
     @jwt_required
     def get(self):
         id = request.args.get('id')
-        offset = int(request.args.get('offset'))
-        limit = int(request.args.get('limit'))
-        order = request.args.get('order')
+        offset = int(request.args.get('offset', 1))
+        limit = int(request.args.get('limit', 10))
+        order = request.args.get('order', Order.time_desc.value)
 
         resource = Resource.query.get_or_404(id)
 
-        if order == 'time_desc':
+        if order == Order.time_desc.value:
             order_by = Reference.timestamp.desc()
-        elif order == 'time_asc':
+        elif order == Order.time_asc.value:
             order_by = Reference.timestamp.asc()
         else:
             order_by = Reference.timestamp.desc()

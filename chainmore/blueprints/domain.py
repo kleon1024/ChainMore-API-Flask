@@ -9,7 +9,7 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response, merge)
-from ..models import (Domain, Depend, Aggregate, Collection)
+from ..models import (Domain, Depend, Aggregate, Collection, Order, Mark)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -33,8 +33,15 @@ class DomainMarked(Resource):
     def get(self):
         limit = int(request.args.get('limit', 10))
         offset = int(request.args.get('offset', 1))
+        order = request.args.get('order', Order.time_desc.value)
+        if order == Order.time_desc.value:
+            order_by = Mark.timestamp.desc()
+        elif order == Order.time_asc.value:
+            order_by = Mark.timestamp.asc()
+        else:
+            order_by = Mark.timestamp.desc()
         items = [merge(mark.domain.s, mark.s) for mark in
-                 current_user.markeds.paginate(offset, limit).items]
+                 current_user.markeds.order_by(order_by).paginate(offset, limit).items]
         return response('OK', items=items)
 
 
@@ -88,10 +95,10 @@ class DomainInstance(Resource):
             creator_id=current_user.id,
         )
         dependeds = data['dependeds']
-        assert (len(dependeds) > 0)
+        assert len(dependeds) > 0
 
         aggregators = data['aggregators']
-        assert (len(aggregators) == 1)
+        assert len(aggregators) == 1
 
         certified_dependeds = []
         for depended in dependeds:
@@ -173,10 +180,10 @@ class DomainInstance(Resource):
         r.modify_time = datetime.utcnow()
 
         new_dependeds = set(data['dependeds'])
-        assert (len(new_dependeds) > 0)
+        assert len(new_dependeds) > 0
 
         new_aggregators = set(data['aggregators'])
-        assert (len(new_aggregators) == 1)
+        assert len(new_aggregators) == 1
 
         certified_dependeds = set()
         for depended in new_dependeds:
@@ -189,6 +196,16 @@ class DomainInstance(Resource):
             aggregator = Domain.query.get_or_404(aggregator)
             # assert aggregator.is_certified(current_user)
             certified_aggregators.add(aggregator.id)
+
+        assert Depend.query.filter(
+            Depend.ancestor_id == r.id,
+            Depend.descendant_id._in(
+                certified_dependeds)).first() is None
+
+        assert Aggregate.query.filter(
+            Aggregate.ancestor_id == r.id,
+            Aggregate.descendant_id._in(
+                certified_aggregators)).first() is None
 
         old_dependeds = set(
             [dep.ancestor_id for dep in r.dependeds.filter_by(distance=1).all()])
@@ -507,6 +524,7 @@ class DomainDepend(Resource):
             Depend.distance == 1).all()]
         return response('OK', items=rs)
 
+
 class DomainRootDepend(Resource):
     def get(self):
         rs = [
@@ -619,6 +637,18 @@ class DomainDepends(Resource):
 
 #         return response("OK")
 
+class DomainExistence(Resource):
+    @jwt_required
+    def get(self):
+        title = request.args.get('title')
+        # TODO check domain validation
+        r = Domain.query.filter_by(title=title).first()
+        rt = []
+        if r is not None:
+            rt.append(r.s)
+        return response('OK', items=rt)
+
+
 api.add_resource(DomainInstance, '')
 api.add_resource(DomainWatch, '/watch')
 api.add_resource(DomainCollections, '/collections')
@@ -646,3 +676,5 @@ api.add_resource(DomainCreated, '/created')
 api.add_resource(DomainMark, '/mark')
 
 api.add_resource(Domains, '/all')
+
+api.add_resource(DomainExistence, '/exist')
