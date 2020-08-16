@@ -51,7 +51,6 @@ class ResourceCreated(RestfulResource):
 
 
 class ResourceCollections(RestfulResource):
-    @jwt_required
     def get(self):
         id = request.args.get('id')
         offset = int(request.args.get('offset', 1))
