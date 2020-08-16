@@ -155,6 +155,9 @@ def add_user(username, role):
         print("salt:{}".format(salt))
         db.session.add(admin)
         db.session.commit()
+    
+        root = Domain.query.get_or_404(1)
+        admin.mark(root)
 
 def reset_user(username, role):
     if User.query.filter_by(username=username).first() is not None:
@@ -168,3 +171,6 @@ def reset_user(username, role):
         admin.set_role(role)
         print("salt:{}".format(salt))
         db.session.commit()
+
+        root = Domain.query.get_or_404(1)
+        admin.mark(root)

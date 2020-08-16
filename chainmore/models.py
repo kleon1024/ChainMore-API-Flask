@@ -778,22 +778,22 @@ class User(db.Model):
         return Star.query.with_parent(self).filter_by(
             resource_id=resource.id).first() is not None
 
-    def mark(self, resource):
-        if not self.is_marking(resource):
-            mark = Mark(user_id=self.id, domain_id=resource.id)
+    def mark(self, domain):
+        if not self.is_marking(domain):
+            mark = Mark(user_id=self.id, domain_id=domain.id)
             db.session.add(mark)
             db.session.commit()
 
-    def unmark(self, resource):
+    def unmark(self, domain):
         mark = Mark.query.with_parent(self).filter_by(
-            domain_id=resource.id).first()
+            domain_id=domain.id).first()
         if mark:
             db.session.delete(mark)
             db.session.commit()
 
-    def is_marking(self, resource):
+    def is_marking(self, domain):
         return Mark.query.with_parent(self).filter_by(
-            domain_id=resource.id).first() is not None
+            domain_id=domain.id).first() is not None
 
 #     def like(self, sparkle):
 #         if not self.is_liking(sparkle):

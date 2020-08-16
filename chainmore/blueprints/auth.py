@@ -19,7 +19,7 @@ import base64
 from ..extensions import db, jwt
 from ..utils import (exist_email, exist_username, validate_email,
                      validate_username, validate_password, response)
-from ..models import User
+from ..models import User, Domain
 
 blacklist = set()
 
@@ -62,6 +62,8 @@ class SignUp(Resource):
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
+        root = Domain.query.get_or_404(1)
+        user.mark(root)
         return response("OK", msg="User Registered")
 
 
