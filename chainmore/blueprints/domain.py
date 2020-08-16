@@ -396,9 +396,11 @@ class DomainAggregators(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             agg.s for agg in Aggregate.query.filter(Aggregate.descendant_id == domain.id,
+                                                    Aggregate.distance >= lower_distance,
                                                     Aggregate.distance <= distance).
             order_by(Aggregate.distance.desc()).all()
         ]
@@ -410,9 +412,11 @@ class DomainAggregateds(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             agg.s for agg in Aggregate.query.filter(Aggregate.ancestor_id == domain.id,
+                                                    Aggregate.distance >= lower_distance,
                                                     Aggregate.distance <= distance).
             order_by(Aggregate.distance.asc()).all()
         ]
@@ -424,9 +428,11 @@ class DomainInstanceAggregators(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             agg.ancestor.s for agg in Aggregate.query.filter(Aggregate.descendant_id == domain.id,
+                                                             Aggregate.distance >= lower_distance,
                                                              Aggregate.distance <= distance).
             order_by(Aggregate.distance.desc()).all()
         ]
@@ -438,9 +444,11 @@ class DomainInstanceAggregateds(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             agg.descendant.s for agg in Aggregate.query.filter(Aggregate.ancestor_id == domain.id,
+                                                               Aggregate.distance >= lower_distance,
                                                                Aggregate.distance <= distance).
             order_by(Aggregate.distance.asc()).all()
         ]
@@ -461,10 +469,12 @@ class DomainDependeds(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.s
             for dep in Depend.query.filter(Depend.descendant_id == domain.id,
+                                           Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
             order_by(Depend.distance.desc()).all()
         ]
@@ -476,10 +486,12 @@ class DomainDependants(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.s
             for dep in Depend.query.filter(Depend.ancestor_id == domain.id,
+                                           Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
             order_by(Depend.distance.asc()).all()
         ]
@@ -490,10 +502,12 @@ class DomainInstanceDependeds(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.ancestor.s
             for dep in Depend.query.filter(Depend.descendant_id == domain.id,
+                                           Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
             order_by(Depend.distance.desc()).all()
         ]
@@ -505,10 +519,12 @@ class DomainInstanceDependants(Resource):
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
+        lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
             dep.descendant.s
             for dep in Depend.query.filter(Depend.ancestor_id == domain.id,
+                                           Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
             order_by(Depend.distance.asc()).all()
         ]

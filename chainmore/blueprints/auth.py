@@ -103,8 +103,8 @@ class SigninRefresh(Resource):
     @jwt_refresh_token_required
     def get(self):
         username = current_user.username
-        access_token = create_access_token(identity=username)
-        refresh_token = create_refresh_token(identity=username)
+        access_token = create_access_token(identity=username, expires_delta=access_token_expire_time)
+        refresh_token = create_refresh_token(identity=username, expires_delta=refresh_token_expire_time)
         return response("OK",
                         msg="Token Refreshed",
                         access_token=access_token,
