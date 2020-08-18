@@ -174,3 +174,9 @@ def reset_user(username, role):
 
         root = Domain.query.get_or_404(1)
         admin.mark(root)
+
+def certify():
+    admin = User.query.filter_by(username='kleon').first()
+    root = Domain.query.get_or_404(1)
+
+    root.certify(admin)

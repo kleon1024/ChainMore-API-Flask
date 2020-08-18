@@ -9,7 +9,8 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response, merge)
-from ..models import (Domain, Depend, Aggregate, Collection, Order, Mark)
+from ..models import (Domain, Depend, Aggregate, Collection, Order, Mark,
+                      CertificationGroup, Certification, MultipleChoiceProblem, MultipleChoice)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -212,6 +213,7 @@ class DomainInstance(Resource):
         removable_dependeds = old_dependeds - certified_dependeds
 
         for removable_depended in removable_dependeds:
+            print(removable_depended, flush=True)
             for (ancestor_id, ancestor_distance) in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
                     Depend.descendant_id == removable_depended).all()]:
                 for (descendant_id, descendant_distance) in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
@@ -223,20 +225,38 @@ class DomainInstance(Resource):
                         db.session.delete(d)
         db.session.commit()
 
-        for depended in certified_dependeds - old_dependeds:
+        addable_dependeds = certified_dependeds - old_dependeds
+        for depended in addable_dependeds:
+            print(depended, flush=True)
             for ancestor_id, ancestor_distance in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
                 Depend.descendant_id == depended
             ).all()]:
                 for descendant_id, descendant_distance in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
+                    print(ancestor_id, descendant_id, ancestor_distance,
+                          descendant_distance, flush=True)
                     old_d = Depend.query.filter(
                         Depend.ancestor_id == ancestor_id,
                         Depend.descendant_id == descendant_id).order_by(Depend.distance.desc()).first()
                     if old_d is not None:
-                        if old_d.distance < ancestor_distance + descendant_distance + 1:
-                            old_d.distance = ancestor_distance + descendant_distance + 1
+                        distance = 1
+                        if ancestor_id in addable_dependeds:
+                            distance += descendant_distance
+                        else:
+                            distance += ancestor_distance + descendant_distance
+                        print('old d', ancestor_id, descendant_id, ancestor_distance,
+                              descendant_distance, distance, flush=True)
+                        if old_d.distance < distance:
+                            old_d.distance = distance
                     else:
+                        distance = 1
+                        if ancestor_id in addable_dependeds:
+                            distance += descendant_distance
+                        else:
+                            distance += ancestor_distance + descendant_distance
+                        print('new d', ancestor_id, descendant_id, ancestor_distance,
+                              descendant_distance, distance, flush=True)
                         d = Depend(ancestor_id=ancestor_id, descendant_id=descendant_id,
-                                   distance=ancestor_distance + descendant_distance + 1)
+                                   distance=distance)
                         db.session.add(d)
 
         old_aggregators = set(
@@ -499,13 +519,15 @@ class DomainDependants(Resource):
 
 
 class DomainInstanceDependeds(Resource):
+    @jwt_required
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)
         lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
         rs = [
-            dep.ancestor.s
+            merge(dep.ancestor.s,
+                  (dict(certified=dep.ancestor.is_certified(current_user))))
             for dep in Depend.query.filter(Depend.descendant_id == domain.id,
                                            Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
@@ -577,6 +599,94 @@ class DomainDepends(Resource):
         rs = list(ol.values())
         return response('OK', items=rs)
 
+
+class DomainCertificationGroups(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        domain = Domain.query.get_or_404(id)
+        rs = [cg.s for cg in domain.certification_groups]
+        return response('OK', items=rs)
+
+
+class DomainCertificationGroupInstance(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        group = CertificationGroup.query.get_or_404(id)
+        return response('OK', items=[group.s])
+
+
+class DomainCertifications(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        group = CertificationGroup.query.get_or_404(id)
+        rs = [c.s for c in group.certifications]
+        return response('OK', items=rs)
+
+
+class DomainMCPInstance(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        mcp = MultipleChoiceProblem.query.get_or_404(id)
+        return response('OK', items=[mcp.s])
+
+
+class DomainMCPChoices(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        mcp = MultipleChoiceProblem.query.get_or_404(id)
+        rs = [choice.s for choice in mcp.choices]
+        return response('OK', items=rs)
+
+
+class DomainMCPAnwers(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        mcp = MultipleChoiceProblem.query.get_or_404(id)
+        rs = [answer.s for answer in mcp.answers]
+        return response('OK', items=rs)
+
+
+class DomainCertificate(Resource):
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        id = data['id']
+        answers = data['answers']
+        group = CertificationGroup.query.get_or_404(id)
+        assert len(list(answers.keys())) == len(group.certifications)
+        for certification in group.certifications:
+            certification.check_answer(answers[certification.id])
+
+        group.finish(current_user)
+        return response('OK', items=[])
+
+
+class DomainCertify(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        domain = Domain.query.get_or_404(id)
+        rs = []
+        if domain.is_certified(current_user):
+            rs.append(domain.s)
+        return response('OK', items=rs)
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        id = data['id']
+        domain = Domain.query.get_or_404(id)
+        for group in domain.certification_groups:
+            assert group.is_finished(current_user)
+
+        domain.certify(current_user)
+        return response('OK', items=[domain.s])
 
 # class RoadMapInstance(Resource):
 #     @jwt_required
@@ -652,6 +762,7 @@ class DomainDepends(Resource):
 
 #         return response("OK")
 
+
 class DomainExistence(Resource):
     @jwt_required
     def get(self):
@@ -693,3 +804,12 @@ api.add_resource(DomainMark, '/mark')
 api.add_resource(Domains, '/all')
 
 api.add_resource(DomainExistence, '/exist')
+
+api.add_resource(DomainCertificationGroups, '/groups')
+api.add_resource(DomainCertificationGroupInstance, '/group')
+api.add_resource(DomainCertifications, '/certifications')
+api.add_resource(DomainMCPInstance, '/mcp')
+api.add_resource(DomainMCPChoices, '/mcp/choices')
+api.add_resource(DomainMCPAnwers, '/mcp/answers')
+api.add_resource(DomainCertificate, '/certificate')
+api.add_resource(DomainCertify, '/certify')

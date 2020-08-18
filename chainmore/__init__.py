@@ -69,6 +69,11 @@ def register_errorhandlers(app):
 
 
 def register_commands(app):
+    @app.cli.command()
+    def certify():
+        """Certify"""
+        from .initialize import certify
+        certify()
 
     @click.option('--username', required=True)
     @click.option('--role', required=True)

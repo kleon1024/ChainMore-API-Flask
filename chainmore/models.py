@@ -33,6 +33,7 @@ class Order(Enum):
     time_desc = 'time_desc'
     time_asc = 'time_asc'
 
+
 class UserRoles:
     LOCKED = 'Locked'
     USER = 'User'
@@ -519,9 +520,10 @@ class Collect(db.Model):
     @property
     def s(self):
         d = dict(
-            collect_time = self.timestamp
+            collect_time=self.timestamp
         )
         return d
+
 
 class Watch(db.Model):
     watcher_id = db.Column(db.Integer,
@@ -553,7 +555,7 @@ class Mark(db.Model):
     @property
     def s(self):
         d = dict(
-            mark_time = self.timestamp
+            mark_time=self.timestamp
         )
         return d
 
@@ -653,6 +655,11 @@ class User(db.Model):
                                 back_populates='followed',
                                 lazy='dynamic',
                                 cascade='all')
+
+    finished_groups = db.relationship('FinishCertificationGroup',
+                                      back_populates='user',
+                                      lazy='dynamic',
+                                      cascade='all')
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -1086,9 +1093,14 @@ class Domain(db.Model):
                                 lazy='dynamic',
                                 cascade='all')
 
+    certification_groups = db.relationship('CertificationGroup',
+                                           back_populates='domain',
+                                           lazy='dynamic',
+                                           cascade='all')
+
     def certify(self, user):
         if not self.is_certified(user):
-            certify = Certify(certifier=user, certified=self)
+            certify = Certify(certifier_id=user.id, certified_id=self.id)
             db.session.add(certify)
             db.session.commit()
 
@@ -1104,14 +1116,146 @@ class Domain(db.Model):
         return self.certifiers.filter_by(
             certifier_id=user.id).first() is not None
 
+
+class FinishCertificationGroup(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    certification_group_id = db.Column(db.Integer, db.ForeignKey(
+        'certification_group.id'), primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User',
+                           foreign_keys=[user_id],
+                           back_populates='finished_groups',
+                           lazy='joined')
+    certification_group = db.relationship('CertificationGroup',
+                                          foreign_keys=[certification_group_id],
+                                          back_populates='finished_users',
+                                          lazy='joined')
+
+
+class CertificationGroup(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    intro = db.Column(db.String, default="")
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted = db.Column(db.Boolean, default=False)
+
+    domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'))
+    domain = db.relationship('Domain', back_populates='certification_groups')
+
+    certifications = db.relationship('Certification',
+                                     back_populates='certification_group',
+                                     lazy='dynamic',
+                                     cascade='all')
+
+    finished_users = db.relationship('FinishCertificationGroup',
+                                     back_populates='certification_group',
+                                     lazy='dynamic',
+                                     cascade='all')
+
+    def finish(self, user):
+        if not self.is_finished(user):
+            finish = FinishCertificationGroup(
+                user_id=user.id, certification_group_id=self.id)
+            db.session.add(finish)
+            db.session.commit()
+
+    def unfinish(self, user):
+        finish = self.users.filter_by(user_id=user.id).first()
+        if finish:
+            db.session.delete(finish)
+            db.session.commit()
+
+    def is_finished(self, user):
+        if user.id is None:
+            return False
+        return self.users.filter_by(user_id=user.id).first() is not None
+
+
+class MultipleChoice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    choice_problem_id = db.Column(db.Integer, db.ForeignKey(
+        'multiple_choice_problem.id'))
+    choice_problem = db.relationship(
+        'MultipleChoiceProblem', foreign_keys=[choice_problem_id], back_populates='choices')
+
+    answer_problem_id = db.Column(db.Integer, db.ForeignKey(
+        'multiple_choice_problem.id'))
+    answer_problem = db.relationship(
+        'MultipleChoiceProblem', foreign_keys=[answer_problem_id], back_populates='choices')
+
+
+class MultipleChoiceProblemType(Enum):
+    SINGLE_ANSWER = 'single_answer'
+    MULTIPLE_ANSWER = 'multiple_answer'
+    ANY_ANSWER = 'any_answer'
+
+
+class MultipleChoiceProblem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String, default='')
+
+    type = db.Column(
+        db.String, default=MultipleChoiceProblemType.SINGLE_ANSWER.value)
+
+    choices = db.relationship('MultipleChoice',
+                              foreign_keys=[MultipleChoice.choice_problem_id],
+                              back_populates='choice_problem',
+                              lazy='dynamic',
+                              cascade='all')
+
+    answers = db.relationship('MultipleChoice',
+                              foreign_keys=[MultipleChoice.answer_problem_id],
+                              back_populates='answer_problem',
+                              lazy='dynamic',
+                              cascade='all')
+
+    certification = db.relationship(
+        'Certification', back_populates='mcp', uselist=False)
+
+    def check_answer(self, answers):
+        checked_answers = []
+        for answer_id in answers:
+            answer = MultipleChoice.query.get_or_404(answer_id)
+            checked_answers.append(answer)
+
+        assert set([a.id for a in checked_answers]) == set(
+            [a.id for a in self.answers])
+
+
+class CertificationType(Enum):
+    MCP = 'multiple_choice_problem'
+
+
+class Certification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted = db.Column(db.Boolean, default=False)
+
+    type = db.Column(db.String, default=CertificationType.MCP.value)
+
+    mcp_id = db.Column(db.Integer, db.ForeignKey('multiple_choice_problem.id'))
+    mcp = db.relationship('MultipleChoiceProblem',
+                          back_populates='certification')
+
+    certification_group_id = db.Column(
+        db.Integer, db.ForeignKey('certification_group.id'))
+    certification_group = db.relationship(
+        'CertificationGroup',
+        back_populates='certifications')
+
+    def check_answer(self, answer):
+        assert self.type == answer['type']
+        if self.type == CertificationType.MCP.value:
+            self.mcp.check_answer(answer['answers'])
+
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):
 #     id = db.Column(db.Integer, primary_key=True)
 #     body = db.Column(db.String(100))
 #     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 #     deleted = db.Column(db.Boolean, default=False)
-
-#     deleted = db.Column(db.Integer, default=0)
 
 #     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 #     replied_id = db.Column(db.Integer, db.ForeignKey('sparkle.id'))

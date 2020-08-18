@@ -192,9 +192,9 @@ class DomainTestCase(BaseTestCase):
     # def test_put_domain(self):
     #     self.login()
     #     '''
-    #     root 
-    #     |    
-    #     DEP0 
+    #     root
+    #     |
+    #     DEP0
     #     '''
     #     response = self.post('/v1/domain',
     #                          json=dict(title="DEP0",
@@ -364,3 +364,74 @@ class DomainTestCase(BaseTestCase):
         self.assertEqual(data['items'][0]['distance'], 0)
         self.assertEqual(data['items'][1]['descendant_id'], dep3_id)
         self.assertEqual(data['items'][1]['distance'], 1)
+
+    def test_put_dep_domain_1(self):
+        self.login()
+        '''
+        root ---
+        |      |    
+        DEP0--DEP1
+        |      |
+        DEP2 --
+        '''
+        response = self.post('/v1/domain',
+                             json=dict(title="DEP0",
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        dep0_id = data['items'][0]['id']
+
+        response = self.post('/v1/domain',
+                             json=dict(title="DEP1",
+                                       dependeds=[1],
+                                       aggregators=[1]))
+        data = self.OK(response)
+        dep1_id = data['items'][0]['id']
+
+        response = self.post('/v1/domain',
+                             json=dict(title="DEP2",
+                                       dependeds=[dep0_id],
+                                       aggregators=[dep0_id]))
+        data = self.OK(response)
+        dep2_id = data['items'][0]['id']
+
+        response = self.get('/v1/domain/dependeds',
+                            query_string=dict(id=dep2_id, distance=3))
+        data = self.OK(response)
+        self.assertEqual(len(data['items']), 3)
+        self.assertEqual(data['items'][0]['ancestor_id'], 1)
+        self.assertEqual(data['items'][0]['distance'], 2)
+        self.assertEqual(data['items'][1]['ancestor_id'], dep0_id)
+        self.assertEqual(data['items'][1]['distance'], 1)
+        self.assertEqual(data['items'][2]['ancestor_id'], dep2_id)
+        self.assertEqual(data['items'][2]['distance'], 0)
+
+        response = self.put('/v1/domain',
+                            json=dict(
+                                id=dep2_id,
+                                title="DEP2",
+                                dependeds=[dep0_id, dep1_id],
+                                aggregators=[dep1_id],
+                            ))
+        data = self.OK(response)
+        self.assertEqual(data['items'][0]['id'], dep2_id)
+
+        response = self.get('/v1/domain/dependeds',
+                            query_string=dict(id=dep2_id, distance=3))
+        data = self.OK(response)
+        self.format(data)
+        self.assertEqual(len(data['items']), 4)
+        self.assertEqual(data['items'][0]['ancestor_id'], 1)
+        self.assertEqual(data['items'][0]['distance'], 2)
+        self.assertIn(data['items'][1]['ancestor_id'], [dep0_id, dep1_id])
+        self.assertEqual(data['items'][1]['distance'], 1)
+        self.assertIn(data['items'][2]['ancestor_id'], [dep0_id, dep1_id])
+        self.assertEqual(data['items'][2]['distance'], 1)
+        self.assertEqual(data['items'][3]['ancestor_id'], dep2_id)
+        self.assertEqual(data['items'][3]['distance'], 0)
+
+        response = self.get('/v1/domain/i/dependeds',
+                            query_string=dict(id=dep2_id, distance=1, lower=1))
+        data = self.OK(response)
+        self.format(data)
+        self.assertEqual(len(data['items']), 2)
