@@ -671,6 +671,15 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.username
 
+    @property
+    def s(self):
+        d = self.to_dict()
+        d.pop('password_hash')
+        d.pop('role_id')
+        d['is_admin'] = self.is_admin
+        d['is_active'] = self.is_active
+        return d
+
     # def set_filtered_categories(self, categories):
     #     print(categories)
     #     for filter_category in self.filtered_categories:

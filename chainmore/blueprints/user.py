@@ -24,30 +24,22 @@ class UserInstanceUnsign(Resource):
 
 class UserInstance(Resource):
     @jwt_required
-    def get(self, username):
-        user = User.query.filter_by(username=username).first_or_404()
-        res = user.serialize()
-        res["following"] = current_user.is_following(user)
-        return response("OK", user=res)
+    def get(self):
+        id = request.args.get('id')
+        user = User.query.get_or_404(id)
+        return response("OK", items=[user.s])
 
     @jwt_required
-    def post(self, username):
-        user = User.query.filter_by(username=username).first_or_404()
-        try:
-            data = request.get_json()
-            categories = data.get('categories', None)
-            nickname = data.get('nickname', None)
-            bio = data.get('bio', None)
-        except:
-            return response("BAD_REQUEST")
-        if categories is not None:
-            user.set_filtered_categories(categories)
-        if nickname is not None and nickname != "":
-            user.nickname = nickname
-        if bio is not None and bio != "":
-            user.bio = bio
+    def post(self):
+        data = request.get_json()
+        id = data.get('id')
+        bio = data.get('bio')
+
+        user = User.query.get_or_404(id)
+        user.bio = bio
+
         db.session.commit()
-        return response("OK")
+        return response("OK", items=[user.s])
 
 
 class UserFollow(Resource):
@@ -72,6 +64,6 @@ class UserFollow(Resource):
         return response("OK", msg="Unfollowed")
 
 
-api.add_resource(UserInstance, '/<username>')
+api.add_resource(UserInstance, '')
 api.add_resource(UserInstanceUnsign, '/unsign/<username>')
 api.add_resource(UserFollow, '/follow')
