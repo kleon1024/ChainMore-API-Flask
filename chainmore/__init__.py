@@ -75,6 +75,13 @@ def register_commands(app):
         from .initialize import certify
         certify()
 
+    @click.option('--command', required=True)
+    @app.cli.command()
+    def raw(command):
+        """Raw Sql"""
+        result = db.engine.execute(command)
+        print(result)
+
     @click.option('--username', required=True)
     @click.option('--role', required=True)
     @app.cli.command()
