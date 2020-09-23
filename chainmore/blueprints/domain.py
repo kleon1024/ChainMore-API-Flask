@@ -410,6 +410,27 @@ class DomainCollections(Resource):
 #         ]
 #         return response("OK", items=domains)
 
+class DomainNotInAggregateds(Resource):
+    @jwt_required
+    def post(self):
+        data = request.get_json
+        domain = Domain.quey.get_or_404(data['id'])
+        agg_domains = [d.id for d in [Domain.quey.get_or_404(id) for id in data['aggregators']]]
+        rs = [d.s for d in Aggregate.query.filter(Aggregate.ancestor_id == domain.id, 
+                                                  Aggregate.descendant_id.in_(agg_domains)).all()]
+        return response('OK', items=rs)
+
+
+class DomainNotInDependants(Resource):
+    @jwt_required
+    def post(self):
+        data = request.get_json
+        domain = Domain.quey.get_or_404(data['id'])
+        dep_domains = [d.id for d in [Domain.quey.get_or_404(id) for id in data['dependeds']]]
+        rs = [d.s for d in Depend.query.filter(Depend.ancestor_id == domain.id, 
+                                               Depend.descendant_id.in_(dep_domains)).all()]
+        return response('OK', items=rs)
+
 
 class DomainAggregators(Resource):
     @jwt_required
@@ -605,7 +626,7 @@ class DomainCertificationGroups(Resource):
     def get(self):
         id = request.args.get('id')
         domain = Domain.query.get_or_404(id)
-        rs = [cg.s for cg in domain.certification_groups]
+        rs = [merge(cg.s, dict(finished=cg.is_finished(current_user))) for cg in domain.certification_groups]
         return response('OK', items=rs)
 
 
@@ -687,6 +708,7 @@ class DomainCertify(Resource):
 
         domain.certify(current_user)
         return response('OK', items=[domain.s])
+        
 
 # class RoadMapInstance(Resource):
 #     @jwt_required
