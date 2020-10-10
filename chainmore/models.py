@@ -980,8 +980,8 @@ class Roadmap(db.Model):
     title = db.Column(db.String)
     intro = db.Column(db.String)
     description = db.Column(db.Text)
-    create_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    modify_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
 
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     creator = db.relationship('User', back_populates='roadmaps')
@@ -1143,6 +1143,7 @@ class FinishCertificationGroup(db.Model):
 
 class CertificationGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String)
     intro = db.Column(db.String, default="")
     create_time = db.Column(db.DateTime, default=datetime.utcnow)
     modify_time = db.Column(db.DateTime, default=datetime.utcnow)
@@ -1169,7 +1170,7 @@ class CertificationGroup(db.Model):
             db.session.commit()
 
     def unfinish(self, user):
-        finish = self.users.filter_by(user_id=user.id).first()
+        finish = self.finished_users.filter_by(user_id=user.id).first()
         if finish:
             db.session.delete(finish)
             db.session.commit()
@@ -1177,11 +1178,12 @@ class CertificationGroup(db.Model):
     def is_finished(self, user):
         if user.id is None:
             return False
-        return self.users.filter_by(user_id=user.id).first() is not None
+        return self.finished_users.filter_by(user_id=user.id).first() is not None
 
 
 class MultipleChoice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String)
 
     choice_problem_id = db.Column(db.Integer, db.ForeignKey(
         'multiple_choice_problem.id'))
@@ -1191,8 +1193,15 @@ class MultipleChoice(db.Model):
     answer_problem_id = db.Column(db.Integer, db.ForeignKey(
         'multiple_choice_problem.id'))
     answer_problem = db.relationship(
-        'MultipleChoiceProblem', foreign_keys=[answer_problem_id], back_populates='choices')
+        'MultipleChoiceProblem', foreign_keys=[answer_problem_id], back_populates='answers')
 
+    @property
+    def s(self):
+        d = dict(
+            id=self.id,
+            text=self.text,
+        )
+        return d
 
 class MultipleChoiceProblemType(Enum):
     SINGLE_ANSWER = 'single_answer'
@@ -1230,7 +1239,19 @@ class MultipleChoiceProblem(db.Model):
 
         assert set([a.id for a in checked_answers]) == set(
             [a.id for a in self.answers])
+    
+    @property
+    def s(self):
+        d = self.to_dict()
+        d['choices'] = [c.s for c in self.choices]
+        return d
 
+    @property
+    def ss(self):
+        d = self.to_dict()
+        d['choices'] = [c.s for c in self.choices]
+        d['answers'] = [c.s for c in self.answers]
+        return d
 
 class CertificationType(Enum):
     MCP = 'multiple_choice_problem'
@@ -1238,6 +1259,7 @@ class CertificationType(Enum):
 
 class Certification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    digest = db.Column(db.String, default="")
     create_time = db.Column(db.DateTime, default=datetime.utcnow)
     modify_time = db.Column(db.DateTime, default=datetime.utcnow)
     deleted = db.Column(db.Boolean, default=False)
@@ -1258,6 +1280,20 @@ class Certification(db.Model):
         assert self.type == answer['type']
         if self.type == CertificationType.MCP.value:
             self.mcp.check_answer(answer['answers'])
+    
+    @property
+    def s(self):
+        d = self.to_dict()
+        if self.type == CertificationType.MCP.value:
+            d['mcp'] = self.mcp.s
+        return d
+
+    @property
+    def ss(self):
+        d = self.to_dict()
+        if self.type == CertificationType.MCP.value:
+            d['mcp'] = self.mcp.ss
+        return d
 
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):

@@ -435,8 +435,3 @@ class DomainTestCase(BaseTestCase):
         data = self.OK(response)
         self.format(data)
         self.assertEqual(len(data['items']), 2)
-
-    def test_certification_groups(self):
-        self.login()
-        response = self.get('/v1/domain/groups',
-                        query_string=dict(id=1))

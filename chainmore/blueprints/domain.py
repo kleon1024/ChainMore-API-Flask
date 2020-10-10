@@ -9,8 +9,10 @@ from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
 from ..utils import (response, merge)
-from ..models import (Domain, Depend, Aggregate, Collection, Order, Mark,
-                      CertificationGroup, Certification, MultipleChoiceProblem, MultipleChoice)
+from ..models import (
+Domain, Depend, Aggregate, Collection, Order, Mark,
+CertificationGroup, Certification, MultipleChoiceProblem, MultipleChoice,
+CertificationType, MultipleChoiceProblemType)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -637,6 +639,41 @@ class DomainCertificationGroupInstance(Resource):
         group = CertificationGroup.query.get_or_404(id)
         return response('OK', items=[group.s])
 
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+
+        domain_id = data['domain']
+        domain = Domain.query.get_or_404(domain_id)
+
+        kwargs = dict(
+            title=data['title'],
+            intro=data.get('intro', ''),
+            domain_id=domain.id,
+        )
+
+        r = CertificationGroup(**kwargs)
+        db.session.add(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+    
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+
+        id = data['id']
+        g = CertificationGroup.query.get_or_404(id)
+        if 'title' in data:
+            g.title = data['title']
+        if 'intro' in data:
+            g.intro = data['intro']
+        if 'domain' in data:
+            domain = Domain.query.get_or_404(data['domain'])
+            g.domain_id = domain.id
+        g.modify_time = datetime.utcnow()
+        db.session.commit()
+        return response('OK', items=[g.s])
+
 
 class DomainCertifications(Resource):
     @jwt_required
@@ -647,12 +684,142 @@ class DomainCertifications(Resource):
         return response('OK', items=rs)
 
 
+class DomainManageCertifications(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        group = CertificationGroup.query.get_or_404(id)
+        assert group.domain.is_certified(current_user) 
+
+        rs = [c.ss for c in group.certifications]
+        return response('OK', items=rs)
+
+
+class DomainCertificationInstance(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        c = Certification.query.get_or_404(id)
+        return response('OK', items=[c.s])
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+
+        kwargs = dict(
+            digest = data.get('digest', '')
+        )
+        group_id = data['group']
+        group = CertificationGroup.query.get_or_404(group_id)
+
+        kwargs['certification_group_id'] = group.id
+
+        t = data['type']
+        if t == CertificationType.MCP.value:
+            mcp_id = data['mcp']
+            mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
+            kwargs['mcp_id'] = mcp.id
+            kwargs['type'] = t
+        else:
+            return response('BAD_REQUEST')
+
+        r = Certification(**kwargs)
+        db.session.add(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+    
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+
+        id = data['id']
+        g = Certification.query.get_or_404(id)
+        if 'digest' in data:
+            g.digest = data['digest']
+        if 'type' in data:
+            t = data['type']
+            if t == CertificationType.MCP.value:
+                mcp_id = data['mcp']
+                mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
+                g.mcp_id = mcp.id
+                g.type = t
+            else:
+                return response('BAD_REQUEST')
+        g.modify_time = datetime.utcnow()
+            
+        db.session.commit()
+        return response('OK', items=[g.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        r = Certification.query.get_or_404(id)
+        db.session.delete(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+
 class DomainMCPInstance(Resource):
     @jwt_required
     def get(self):
         id = request.args.get('id')
         mcp = MultipleChoiceProblem.query.get_or_404(id)
         return response('OK', items=[mcp.s])
+    
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+
+        text = data['text']
+        t = data['type']
+
+        assert t in [
+            MultipleChoiceProblemType.SINGLE_ANSWER.value,
+            MultipleChoiceProblemType.MULTIPLE_ANSWER.value,
+            MultipleChoiceProblemType.ANY_ANSWER.value,
+        ]
+
+        kwargs = dict(
+            text = text,
+            type = t
+        )
+
+        r = MultipleChoiceProblem(**kwargs)
+        db.session.add(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+
+        id = data['id']
+        r = MultipleChoiceProblem.query.get_or_404(id)
+
+        if 'text' in data:
+            r.text = data['text']
+        if 'type' in data:
+            t = data['type']
+            assert t in [
+                MultipleChoiceProblemType.SINGLE_ANSWER.value,
+                MultipleChoiceProblemType.MULTIPLE_ANSWER.value,
+                MultipleChoiceProblemType.ANY_ANSWER.value,
+            ]
+            r.type = t
+
+        r.modify_time = datetime.utcnow()
+            
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        
+        r = MultipleChoiceProblem.query.get_or_404(id)
+        db.session.delete(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
 
 
 class DomainMCPChoices(Resource):
@@ -663,8 +830,71 @@ class DomainMCPChoices(Resource):
         rs = [choice.s for choice in mcp.choices]
         return response('OK', items=rs)
 
+class DomainMCPChoiceInstance(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        r = MultipleChoice.query.get_or_404(id)
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+
+        mcp_id = data.get('mcp')
+        mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
+        
+        answer = data.get('answer')
+
+        kwargs = dict(
+            text = data['text'],
+            choice_problem_id = mcp.id,
+        )
+
+        if answer:
+            kwargs['answer_problem_id'] = mcp.id
+
+        r = MultipleChoice(**kwargs)
+        db.session.add(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+
+        id = data['id']
+        r = MultipleChoice.query.get_or_404(id)
+        r.text = data['text']
+
+        if 'mcp' in data:
+            mcp_id = data.get('mcp')
+            mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
+            r.choice_problem_id = mcp.id
+            if r.answer_problem_id is not None:
+                r.answer_problem_id = mcp.id
+
+        if 'answer' in data:
+            answer = data.get('answer')
+            if answer:
+                r.answer_problem_id = r.choice_problem_id
+            else:
+                r.answer_problem_id = None
+ 
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        r = MultipleChoice.query.get_or_404(id)
+        db.sesion.delete(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+
 
 class DomainMCPAnwers(Resource):
+    @admin_required
     @jwt_required
     def get(self):
         id = request.args.get('id')
@@ -686,6 +916,13 @@ class DomainCertificate(Resource):
 
         group.finish(current_user)
         return response('OK', items=[])
+
+
+class DomainCertifieds(Resource):
+    @jwt_required
+    def get(self):
+        rs = [c.certified.s for c in current_user.certifieds]
+        return response('OK', items=rs)
 
 
 class DomainCertify(Resource):
@@ -830,8 +1067,12 @@ api.add_resource(DomainExistence, '/exist')
 api.add_resource(DomainCertificationGroups, '/groups')
 api.add_resource(DomainCertificationGroupInstance, '/group')
 api.add_resource(DomainCertifications, '/certifications')
+api.add_resource(DomainManageCertifications, '/manage/certifications')
+api.add_resource(DomainCertificationInstance, '/certification')
 api.add_resource(DomainMCPInstance, '/mcp')
 api.add_resource(DomainMCPChoices, '/mcp/choices')
+api.add_resource(DomainMCPChoiceInstance, '/mcp/choice')
 api.add_resource(DomainMCPAnwers, '/mcp/answers')
 api.add_resource(DomainCertificate, '/certificate')
 api.add_resource(DomainCertify, '/certify')
+api.add_resource(DomainCertifieds, '/certifieds')
