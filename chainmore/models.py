@@ -12,6 +12,7 @@ from .extensions import db, whooshee
 
 import json
 
+DIGEST_LENGTH = 64
 
 def to_dict(self):
     return {
@@ -1214,7 +1215,7 @@ class MultipleChoiceProblem(db.Model):
     text = db.Column(db.String, default='')
 
     type = db.Column(
-        db.String, default=MultipleChoiceProblemType.SINGLE_ANSWER.value)
+        db.String, default=MultipleChoiceProblemType.ANY_ANSWER.value)
 
     choices = db.relationship('MultipleChoice',
                               foreign_keys=[MultipleChoice.choice_problem_id],
@@ -1250,7 +1251,7 @@ class MultipleChoiceProblem(db.Model):
     def ss(self):
         d = self.to_dict()
         d['choices'] = [c.s for c in self.choices]
-        d['answers'] = [c.s for c in self.answers]
+        d['answers'] = [c.id for c in self.answers]
         return d
 
 class CertificationType(Enum):

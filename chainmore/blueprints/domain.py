@@ -10,9 +10,9 @@ from flask_restful import Api, Resource
 
 from ..utils import (response, merge)
 from ..models import (
-Domain, Depend, Aggregate, Collection, Order, Mark,
-CertificationGroup, Certification, MultipleChoiceProblem, MultipleChoice,
-CertificationType, MultipleChoiceProblemType)
+    Domain, Depend, Aggregate, Collection, Order, Mark,
+    CertificationGroup, Certification, MultipleChoiceProblem, MultipleChoice,
+    CertificationType, MultipleChoiceProblemType, DIGEST_LENGTH)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -417,8 +417,9 @@ class DomainNotInAggregateds(Resource):
     def post(self):
         data = request.get_json
         domain = Domain.quey.get_or_404(data['id'])
-        agg_domains = [d.id for d in [Domain.quey.get_or_404(id) for id in data['aggregators']]]
-        rs = [d.s for d in Aggregate.query.filter(Aggregate.ancestor_id == domain.id, 
+        agg_domains = [d.id for d in [
+            Domain.quey.get_or_404(id) for id in data['aggregators']]]
+        rs = [d.s for d in Aggregate.query.filter(Aggregate.ancestor_id == domain.id,
                                                   Aggregate.descendant_id.in_(agg_domains)).all()]
         return response('OK', items=rs)
 
@@ -428,8 +429,9 @@ class DomainNotInDependants(Resource):
     def post(self):
         data = request.get_json
         domain = Domain.quey.get_or_404(data['id'])
-        dep_domains = [d.id for d in [Domain.quey.get_or_404(id) for id in data['dependeds']]]
-        rs = [d.s for d in Depend.query.filter(Depend.ancestor_id == domain.id, 
+        dep_domains = [d.id for d in [
+            Domain.quey.get_or_404(id) for id in data['dependeds']]]
+        rs = [d.s for d in Depend.query.filter(Depend.ancestor_id == domain.id,
                                                Depend.descendant_id.in_(dep_domains)).all()]
         return response('OK', items=rs)
 
@@ -628,7 +630,8 @@ class DomainCertificationGroups(Resource):
     def get(self):
         id = request.args.get('id')
         domain = Domain.query.get_or_404(id)
-        rs = [merge(cg.s, dict(finished=cg.is_finished(current_user))) for cg in domain.certification_groups]
+        rs = [merge(cg.s, dict(finished=cg.is_finished(current_user)))
+              for cg in domain.certification_groups]
         return response('OK', items=rs)
 
 
@@ -656,7 +659,7 @@ class DomainCertificationGroupInstance(Resource):
         db.session.add(r)
         db.session.commit()
         return response('OK', items=[r.s])
-    
+
     @jwt_required
     def put(self):
         data = request.get_json()
@@ -671,6 +674,14 @@ class DomainCertificationGroupInstance(Resource):
             domain = Domain.query.get_or_404(data['domain'])
             g.domain_id = domain.id
         g.modify_time = datetime.utcnow()
+        db.session.commit()
+        return response('OK', items=[g.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        g = CertificationGroup.query.get_or_404(id)
+        db.session.delete(g)
         db.session.commit()
         return response('OK', items=[g.s])
 
@@ -689,7 +700,7 @@ class DomainManageCertifications(Resource):
     def get(self):
         id = request.args.get('id')
         group = CertificationGroup.query.get_or_404(id)
-        assert group.domain.is_certified(current_user) 
+        assert group.domain.is_certified(current_user)
 
         rs = [c.ss for c in group.certifications]
         return response('OK', items=rs)
@@ -706,9 +717,7 @@ class DomainCertificationInstance(Resource):
     def post(self):
         data = request.get_json()
 
-        kwargs = dict(
-            digest = data.get('digest', '')
-        )
+        kwargs = dict()
         group_id = data['group']
         group = CertificationGroup.query.get_or_404(group_id)
 
@@ -719,6 +728,7 @@ class DomainCertificationInstance(Resource):
             mcp_id = data['mcp']
             mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
             kwargs['mcp_id'] = mcp.id
+            kwargs['digest'] = mcp.text[:DIGEST_LENGTH]
             kwargs['type'] = t
         else:
             return response('BAD_REQUEST')
@@ -727,13 +737,17 @@ class DomainCertificationInstance(Resource):
         db.session.add(r)
         db.session.commit()
         return response('OK', items=[r.s])
-    
+
     @jwt_required
     def put(self):
         data = request.get_json()
 
         id = data['id']
         g = Certification.query.get_or_404(id)
+        if 'group' in data:
+            group_id = data['group']
+            group = CertificationGroup.query.get_or_404(group_id)
+            g.certification_group_id = group.id
         if 'digest' in data:
             g.digest = data['digest']
         if 'type' in data:
@@ -746,7 +760,7 @@ class DomainCertificationInstance(Resource):
             else:
                 return response('BAD_REQUEST')
         g.modify_time = datetime.utcnow()
-            
+
         db.session.commit()
         return response('OK', items=[g.s])
 
@@ -754,6 +768,12 @@ class DomainCertificationInstance(Resource):
     def delete(self):
         id = request.args.get('id')
         r = Certification.query.get_or_404(id)
+
+        if r.type == CertificationType.MCP.value:
+            for c in r.mcp.choices:
+                db.session.delete(c)
+            db.session.delete(r.mcp)
+
         db.session.delete(r)
         db.session.commit()
         return response('OK', items=[r.s])
@@ -765,13 +785,15 @@ class DomainMCPInstance(Resource):
         id = request.args.get('id')
         mcp = MultipleChoiceProblem.query.get_or_404(id)
         return response('OK', items=[mcp.s])
-    
+
     @jwt_required
     def post(self):
         data = request.get_json()
+        print(data, flush=True)
+        print(request.args, flush=True)
 
         text = data['text']
-        t = data['type']
+        t = data.get('type', MultipleChoiceProblemType.ANY_ANSWER.value)
 
         assert t in [
             MultipleChoiceProblemType.SINGLE_ANSWER.value,
@@ -780,8 +802,8 @@ class DomainMCPInstance(Resource):
         ]
 
         kwargs = dict(
-            text = text,
-            type = t
+            text=text,
+            type=t
         )
 
         r = MultipleChoiceProblem(**kwargs)
@@ -798,6 +820,7 @@ class DomainMCPInstance(Resource):
 
         if 'text' in data:
             r.text = data['text']
+            r.certification.digest = r.text[:DIGEST_LENGTH]
         if 'type' in data:
             t = data['type']
             assert t in [
@@ -808,14 +831,14 @@ class DomainMCPInstance(Resource):
             r.type = t
 
         r.modify_time = datetime.utcnow()
-            
+
         db.session.commit()
         return response('OK', items=[r.s])
 
     @jwt_required
     def delete(self):
         id = request.args.get('id')
-        
+
         r = MultipleChoiceProblem.query.get_or_404(id)
         db.session.delete(r)
         db.session.commit()
@@ -830,6 +853,7 @@ class DomainMCPChoices(Resource):
         rs = [choice.s for choice in mcp.choices]
         return response('OK', items=rs)
 
+
 class DomainMCPChoiceInstance(Resource):
     @jwt_required
     def get(self):
@@ -843,12 +867,12 @@ class DomainMCPChoiceInstance(Resource):
 
         mcp_id = data.get('mcp')
         mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
-        
-        answer = data.get('answer')
+
+        answer = data.get('answer', False)
 
         kwargs = dict(
-            text = data['text'],
-            choice_problem_id = mcp.id,
+            text=data['text'],
+            choice_problem_id=mcp.id,
         )
 
         if answer:
@@ -865,22 +889,24 @@ class DomainMCPChoiceInstance(Resource):
 
         id = data['id']
         r = MultipleChoice.query.get_or_404(id)
-        r.text = data['text']
+
+        if 'text' in data:
+            r.text = data['text']
 
         if 'mcp' in data:
-            mcp_id = data.get('mcp')
+            mcp_id = data['mcp']
             mcp = MultipleChoiceProblem.query.get_or_404(mcp_id)
             r.choice_problem_id = mcp.id
             if r.answer_problem_id is not None:
                 r.answer_problem_id = mcp.id
 
         if 'answer' in data:
-            answer = data.get('answer')
+            answer = data['answer']
             if answer:
                 r.answer_problem_id = r.choice_problem_id
             else:
                 r.answer_problem_id = None
- 
+
         db.session.commit()
         return response('OK', items=[r.s])
 
@@ -888,7 +914,7 @@ class DomainMCPChoiceInstance(Resource):
     def delete(self):
         id = request.args.get('id')
         r = MultipleChoice.query.get_or_404(id)
-        db.sesion.delete(r)
+        db.session.delete(r)
         db.session.commit()
         return response('OK', items=[r.s])
 
@@ -945,7 +971,7 @@ class DomainCertify(Resource):
 
         domain.certify(current_user)
         return response('OK', items=[domain.s])
-        
+
 
 # class RoadMapInstance(Resource):
 #     @jwt_required

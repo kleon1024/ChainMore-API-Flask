@@ -75,7 +75,7 @@ def register_commands(app):
         from .initialize import certify
         certify()
 
-    @click.option('--command', required=True)
+    @click.option('-c', '--command', required=True)
     @app.cli.command()
     def raw(command):
         """Raw Sql"""
