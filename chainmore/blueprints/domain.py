@@ -789,8 +789,6 @@ class DomainMCPInstance(Resource):
     @jwt_required
     def post(self):
         data = request.get_json()
-        print(data, flush=True)
-        print(request.args, flush=True)
 
         text = data['text']
         t = data.get('type', MultipleChoiceProblemType.ANY_ANSWER.value)
@@ -936,12 +934,12 @@ class DomainCertificate(Resource):
         id = data['id']
         answers = data['answers']
         group = CertificationGroup.query.get_or_404(id)
-        assert len(list(answers.keys())) == len(group.certifications)
+        assert len(list(answers.keys())) == group.certifications.count()
         for certification in group.certifications:
-            certification.check_answer(answers[certification.id])
+            certification.check_answer(answers[str(certification.id)])
 
         group.finish(current_user)
-        return response('OK', items=[])
+        return response('OK', items=[group.s])
 
 
 class DomainCertifieds(Resource):

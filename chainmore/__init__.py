@@ -82,8 +82,8 @@ def register_commands(app):
         result = db.engine.execute(command)
         print(result)
 
-    @click.option('--username', required=True)
-    @click.option('--role', required=True)
+    @click.option('-u', '--username', required=True)
+    @click.option('-r', '--role', required=True)
     @app.cli.command()
     def create_user(username, role):
         """Create User"""
@@ -91,8 +91,8 @@ def register_commands(app):
         from .initialize import add_user
         add_user(username, role)
 
-    @click.option('--username', required=True)
-    @click.option('--role', required=True)
+    @click.option('-u', '--username', required=True)
+    @click.option('-r', '--role', required=True)
     @app.cli.command()
     def reset_user(username, role):
         """Create User"""
