@@ -62,13 +62,12 @@ class CertifyTestCase(BaseTestCase):
 
         d = self.OK(self.post('/v1/domain/certification',
                               json=dict(
-                                  digest='sha256',
                                   group=group_id,
                                   type='multiple_choice_problem',
                                   mcp=mcp_id,
                               )))
 
-        self.assertEqual(d['items'][0]['digest'], 'sha256')
+        self.assertEqual(d['items'][0]['digest'], 'Question Body')
         self.assertEqual(d['items'][0]['type'], 'multiple_choice_problem')
         self.assertEqual(d['items'][0]['mcp_id'], mcp_id)
 

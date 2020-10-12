@@ -971,6 +971,39 @@ class DomainCertify(Resource):
         return response('OK', items=[domain.s])
 
 
+class DomainLearn(Resource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('domain')
+        domain = Domain.query.get_or_404(id)
+        rs = []
+        if current_user.is_learning_domain(domain):
+            rs = [domain.s]
+        return response('OK', items=rs)
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        id = data['domain']
+        domain = Domain.query.get_or_404(id)
+        current_user.learn_domain(domain)
+        return response('OK', items=[domain.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('domain')
+        domain = Domain.query.get_or_404(id)
+        current_user.unlearn(domain)
+        return response('OK', items=[domain.s])
+
+
+class DomainTargetDomains(Resource):
+    @jwt_required
+    def get(self):
+        rs = [d.s for d in current_user.target_domains.all()]
+        return response('OK', items=rs)
+
+
 # class RoadMapInstance(Resource):
 #     @jwt_required
 #     def post(self):
@@ -1080,6 +1113,8 @@ api.add_resource(DomainRootDepend, '/depend/root')
 api.add_resource(DomainDepends, '/depends')
 # api.add_resource(RoadMapInstance, '/roadmap')
 # api.add_resource(RoadMapLearn, '/roadmap/learn')
+api.add_resource(DomainLearn, '/learn')
+api.add_resource(DomainTargetDomains, '/targets')
 api.add_resource(DomainMarked, '/marked')
 api.add_resource(DomainCreated, '/created')
 api.add_resource(DomainMark, '/mark')

@@ -883,14 +883,12 @@ class User(db.Model):
             learning_id=roadmap.id).first() is not None
 
     def learn_domain(self, domain):
-        domain = Domain.query.get_or_404(domain)
         if not self.is_learning_domain(domain):
             learn = TargetDomain(learner=self, learning=domain)
             db.session.add(learn)
             db.session.commit()
 
     def unlearn_domain(self, domain):
-        domain = Domain.query.get_or_404(domain)
         learn = TargetDomain.query.with_parent(self).filter_by(
             learning_id=domain.id).first()
         if learn:
