@@ -11,6 +11,7 @@ from flask_restful import Api, Resource
 from ..utils import (response, merge)
 from ..models import (
     Domain, Depend, Aggregate, Collection, Order, Mark,
+    Collect,
     CertificationGroup, Certification, MultipleChoiceProblem, MultipleChoice,
     CertificationType, MultipleChoiceProblemType, DIGEST_LENGTH)
 from ..extensions import db
@@ -215,7 +216,6 @@ class DomainInstance(Resource):
         removable_dependeds = old_dependeds - certified_dependeds
 
         for removable_depended in removable_dependeds:
-            print(removable_depended, flush=True)
             for (ancestor_id, ancestor_distance) in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
                     Depend.descendant_id == removable_depended).all()]:
                 for (descendant_id, descendant_distance) in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
@@ -229,13 +229,10 @@ class DomainInstance(Resource):
 
         addable_dependeds = certified_dependeds - old_dependeds
         for depended in addable_dependeds:
-            print(depended, flush=True)
             for ancestor_id, ancestor_distance in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
                 Depend.descendant_id == depended
             ).all()]:
                 for descendant_id, descendant_distance in [(dep.descendant_id, dep.distance) for dep in r.dependants]:
-                    print(ancestor_id, descendant_id, ancestor_distance,
-                          descendant_distance, flush=True)
                     old_d = Depend.query.filter(
                         Depend.ancestor_id == ancestor_id,
                         Depend.descendant_id == descendant_id).order_by(Depend.distance.desc()).first()
@@ -245,8 +242,6 @@ class DomainInstance(Resource):
                             distance += descendant_distance
                         else:
                             distance += ancestor_distance + descendant_distance
-                        print('old d', ancestor_id, descendant_id, ancestor_distance,
-                              descendant_distance, distance, flush=True)
                         if old_d.distance < distance:
                             old_d.distance = distance
                     else:
@@ -255,8 +250,6 @@ class DomainInstance(Resource):
                             distance += descendant_distance
                         else:
                             distance += ancestor_distance + descendant_distance
-                        print('new d', ancestor_id, descendant_id, ancestor_distance,
-                              descendant_distance, distance, flush=True)
                         d = Depend(ancestor_id=ancestor_id, descendant_id=descendant_id,
                                    distance=distance)
                         db.session.add(d)
@@ -347,6 +340,20 @@ class DomainCollections(Resource):
         rs = [collection.s for collection in collections]
         return response("OK", items=rs, aggs=aggs)
 
+
+class DomainUserCollections(Resource):
+    @jwt_required
+    def get(self):
+        domain = request.args.get('domain')
+        domain = Domain.query.get_or_404(domain)
+
+        rs = [c.collected.s for c in Collect.query.join(
+                Collection, Collect.collected_id == Collection.id).filter(
+                    Collect.collector_id == current_user.id,
+                    Collection.domain_id == domain.id
+                ).all()]
+
+        return response('OK', items=rs)
 
 # class DomainCerification(Resource):
 #     @jwt_required
@@ -550,9 +557,18 @@ class DomainInstanceDependeds(Resource):
         distance = request.args.get('distance', 1)
         lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
+        certified_domains = [c.certified_id for c in current_user.certifieds.all()]
+        skipped_domains = set([dep.ancestor_id for dep in Depend.query.filter(
+            Depend.descendant_id.in_(certified_domains)).all()])
+        recommend_domains = set([dep.descendant_id for dep in Depend.query.filter(
+            Depend.ancestor_id.in_(certified_domains),
+            Depend.distance == 1).all()])
+        print(recommend_domains)
         rs = [
             merge(dep.ancestor.s,
-                  (dict(certified=dep.ancestor.is_certified(current_user))))
+                  (dict(certified=dep.ancestor.is_certified(current_user),
+                  recommend=dep.ancestor_id in recommend_domains,
+                  skip=dep.ancestor_id in skipped_domains)))
             for dep in Depend.query.filter(Depend.descendant_id == domain.id,
                                            Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
@@ -1094,6 +1110,7 @@ class DomainExistence(Resource):
 api.add_resource(DomainInstance, '')
 api.add_resource(DomainWatch, '/watch')
 api.add_resource(DomainCollections, '/collections')
+api.add_resource(DomainUserCollections, '/user/collections')
 # api.add_resource(DomainCerification, '/certify')
 # api.add_resource(DomainHot, '/hot')
 api.add_resource(DomainAggregators, '/aggregators')
