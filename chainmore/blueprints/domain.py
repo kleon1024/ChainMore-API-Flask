@@ -1000,7 +1000,7 @@ class DomainLearn(Resource):
 class DomainTargetDomains(Resource):
     @jwt_required
     def get(self):
-        rs = [d.s for d in current_user.target_domains.all()]
+        rs = [d.learning.s for d in current_user.target_domains.all()]
         return response('OK', items=rs)
 
 
