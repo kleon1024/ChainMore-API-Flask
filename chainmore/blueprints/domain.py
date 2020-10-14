@@ -563,7 +563,6 @@ class DomainInstanceDependeds(Resource):
         recommend_domains = set([dep.descendant_id for dep in Depend.query.filter(
             Depend.ancestor_id.in_(certified_domains),
             Depend.distance == 1).all()])
-        print(recommend_domains)
         rs = [
             merge(dep.ancestor.s,
                   (dict(certified=dep.ancestor.is_certified(current_user),
@@ -986,6 +985,17 @@ class DomainCertify(Resource):
         domain.certify(current_user)
         return response('OK', items=[domain.s])
 
+    @jwt_required
+    def delete(self):
+        domain = request.args.get('domain')
+        domain = Domain.query.get_or_404(domain)
+
+        for group in domain.certification_groups:
+            group.unfinish(current_user)
+        
+        domain.uncertify(current_user)
+        return response('OK', items=[domain.s])
+
 
 class DomainLearn(Resource):
     @jwt_required
@@ -1009,7 +1019,7 @@ class DomainLearn(Resource):
     def delete(self):
         id = request.args.get('domain')
         domain = Domain.query.get_or_404(id)
-        current_user.unlearn(domain)
+        current_user.unlearn_domain(domain)
         return response('OK', items=[domain.s])
 
 
