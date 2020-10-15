@@ -249,6 +249,9 @@ class Resource(db.Model):
             d = {'id': self.id, 'deleted': self.deleted}
         else:
             d = self.to_dict()
+            d['media_type'] = self.media_type.name
+            d['resource_type'] = self.resource_type.name
+        
         return d
 
 
