@@ -227,7 +227,7 @@ class DomainInstance(Resource):
                         db.session.delete(d)
         db.session.commit()
 
-        addable_dependeds = certified_dependeds - old_dependeds
+        addable_dependeds = certified_dependeds
         for depended in addable_dependeds:
             for ancestor_id, ancestor_distance in [(dep.ancestor_id, dep.distance) for dep in Depend.query.filter(
                 Depend.descendant_id == depended
