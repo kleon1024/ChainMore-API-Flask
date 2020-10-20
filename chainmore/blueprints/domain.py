@@ -27,7 +27,7 @@ class Domains(Resource):
     def get(self):
         limit = int(request.args.get('limit', 10))
         offset = int(request.args.get('offset', 1))
-        items = [d.s for d in Domain.query.order_by(
+        items = [d.ss for d in Domain.query.order_by(
             Domain.modify_time.desc()).paginate(offset, limit).items]
         return response('OK', items=items)
 
@@ -511,7 +511,7 @@ class DomainAggregate(Resource):
     # @jwt_required
     # @admin_required
     def get(self):
-        rs = [agg.s for agg in Aggregate.query.filter(
+        rs = [agg.ss for agg in Aggregate.query.filter(
             Aggregate.distance == 1).all()]
         return response('OK', items=rs)
 
@@ -597,7 +597,7 @@ class DomainDepend(Resource):
     # @jwt_required
     # @admin_required
     def get(self):
-        rs = [dep.s for dep in Depend.query.filter(
+        rs = [dep.ss() for dep in Depend.query.filter(
             Depend.distance == 1).all()]
         return response('OK', items=rs)
 
@@ -605,7 +605,7 @@ class DomainDepend(Resource):
 class DomainRootDepend(Resource):
     def get(self):
         rs = [
-            dep.s for dep in Depend.query.filter(
+            dep.ss(distance=True) for dep in Depend.query.filter(
                 Depend.ancestor_id == 1
             ).order_by(Depend.distance.asc()).all()
         ]

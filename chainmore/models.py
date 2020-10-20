@@ -438,6 +438,13 @@ class Aggregate(db.Model):
         d['descendant'] = self.descendant.s
         return d
 
+    @property
+    def ss(self):
+        d = {}
+        d['ancestor'] = self.ancestor.ss
+        d['descendant'] = self.descendant.ss
+        return d
+
 
 class Depend(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -461,6 +468,14 @@ class Depend(db.Model):
         d = self.to_dict()
         d['ancestor'] = self.ancestor.s
         d['descendant'] = self.descendant.s
+        return d
+
+    def ss(self, distance=False):
+        d = {}
+        d['ancestor'] = self.ancestor.ss
+        d['descendant'] = self.descendant.ss
+        if distance:
+            d['distance'] = self.distance
         return d
 
 
@@ -1126,6 +1141,13 @@ class Domain(db.Model):
             return False
         return self.certifiers.filter_by(
             certifier_id=user.id).first() is not None
+
+    @property
+    def ss(self):
+        d = {}
+        d['id'] = self.id
+        d['title'] = self.title
+        return d
 
 
 class FinishCertificationGroup(db.Model):
