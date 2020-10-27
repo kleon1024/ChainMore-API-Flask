@@ -9,7 +9,11 @@ from flask_restful import Api
 from flask_restful import Resource as RestfulResource
 
 from ..utils import (response, merge)
-from ..models import Resource, MediaType, ResourceType, Collection, Reference, Order, Star
+from ..models import (
+Resource, MediaType, ResourceType, 
+Collection, Reference, 
+Order, Star, ResourceTag
+)
 from ..extensions import db
 from ..decorators import admin_required, permission_required
 
@@ -242,6 +246,66 @@ class ResourceStar(RestfulResource):
         current_user.unstar(r)
         return response('OK', items=[r.s])
 
+class ResourceTagItem(RestfulResource):
+    @jwt_required
+    def get(self):
+        id = request.args.get('id')
+        r = ResourceTag.query.get_or_404(id)
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def post(self):
+        data = request.get_json()
+        kwargs = {}
+        kwargs['title'] = data['title']
+        kwargs['creator_id'] = current_user.id
+        r = ResourceTag(**kwargs)
+        db.session.add(r)
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+        r = ResourceTag.query.get_or_404(data['id'])
+        if 'title' in data:
+            r.title = data['title']
+        db.session.commit()
+        return response('OK', items=[r.s])
+
+    @jwt_required
+    def delete(self):
+        id = request.args.get('id')
+        r = ResourceTag.query.get_or_404(id)
+        assert r.creator_id == current_user.id
+        r.remove_all()
+        return response('OK', items=[r.s])
+
+class ResourceStick(RestfulResource):
+    @jwt_required
+    def post(self):
+        resource = Resource.query.get_or_404(data['resource'])
+        tag = Tag.query.get_or_404(data['tag'])
+
+        assert tag.creator_id == current_user.id
+        assert current_user.stars.filter_by(resource_id=resource.id).first() is not None
+
+        resource.add_tag(tag)
+        return response('OK', items=[resource.s])
+
+    @jwt_required
+    def delete(self):
+        resource = request.args.get('resource')
+        tag = request.args.get('tag')
+        resource = Resource.query.get_or_404(resource)
+        tag = Tag.query.get_or_404(tag)
+
+        assert tag.creator_id == current_user.id
+        assert current_user.stars.filter_by(resource_id=resource.id).first() is not None
+
+        resource.remove_tag(tag)
+        return response('OK', items=[resource.s])
+
 
 api.add_resource(ResourceInstance, '')
 api.add_resource(MediaTypeInstance, '/media_type')
@@ -252,3 +316,5 @@ api.add_resource(ResourceStar, '/star')
 api.add_resource(ResourceStared, '/stared')
 api.add_resource(ResourceCreated, '/created')
 api.add_resource(ResourceCollections, '/collections')
+api.add_resource(ResourceTagItem, '/tag')
+api.add_resource(ResourceStick, '/stick')

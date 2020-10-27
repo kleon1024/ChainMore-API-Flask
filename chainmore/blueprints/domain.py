@@ -476,7 +476,6 @@ class DomainAggregateds(Resource):
 
 
 class DomainInstanceAggregators(Resource):
-    @jwt_required
     def get(self):
         id = request.args.get('id')
         distance = request.args.get('distance', 1)

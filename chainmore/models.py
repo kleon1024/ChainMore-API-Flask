@@ -123,6 +123,8 @@ class Classify(db.Model):
                                  foreign_keys=[classifier_id],
                                  back_populates='classifieds',
                                  lazy='joined')
+    name_zh_cn = db.Column(String)
+    name_en_us = db.Column(String)
 
     @property
     def s(self):
@@ -139,6 +141,8 @@ class MediaType(db.Model):
 
     # Media Type: Article/Video/Audio/Image/VR/AR/offline
     name = db.Column(db.String)
+    name_zh_cn = db.Column(db.String)
+    name_en_us = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='media_type')
 
     classifiers = db.relationship('Classify',
@@ -157,6 +161,8 @@ class ResourceType(db.Model):
     # Internal: QA/Tutorial/Experience/Project/Record/Example/Quiz/Problem
     # External: Quora/Blog/Podcast/Course/Book/Music/Movie
     name = db.Column(db.String)
+    name_zh_cn = db.Column(db.String)
+    name_en_us = db.Column(db.String)
     resources = db.relationship('Resource', back_populates='resource_type')
 
     classifieds = db.relationship('Classify',
@@ -194,6 +200,39 @@ class Report(db.Model):
     description = db.Column(db.Text)
     status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
     status = db.relationship('Status', back_populates='reports')
+
+
+@whooshee.register_model('title')
+class ResourceTag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    creator = db.relationship('User', back_populates='resource_tags')
+
+    resources = db.relationship('ResourceStick',
+                            back_populates='tag',
+                            lazy='dynamic',
+                            cascade='all')
+    
+    def remove_all(self):
+        self.resources.delete(synchronize_session=False)
+        db.session.delete(self)
+        db.session.commit()
+
+
+class ResourceStick(db.Model):
+    resource_id = db.Column(db.Integer, db.ForeignKey('resource.id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('resource_tag.id'), primary_key=True)
+    resource = db.relationship('Resource', 
+                                foreign_keys=[resource_id],
+                                back_populates='tags',
+                                lazy='joined')
+    tag = db.relationship('ResourceTag',
+                           foreign_keys=[tag_id],
+                           back_populates='resources',
+                           lazy='joined')
 
 
 class Resource(db.Model):
@@ -243,6 +282,11 @@ class Resource(db.Model):
                                  lazy='dynamic',
                                  cascade='all')
 
+    tags = db.relationship('ResourceStick',
+                            back_populates='resource',
+                            lazy='dynamic',
+                            cascade='all')
+
     @property
     def s(self):
         if self.deleted:
@@ -254,6 +298,22 @@ class Resource(db.Model):
         
         return d
 
+
+    def has_tag(self, tag):
+        return self.tags.query.filter_by(resource_id=self.id).first() is not None
+    
+    def add_tag(self, tag):
+        if not self.has_tag(tag):
+            s = ResourceStick(resource_id=self.id, tag_id=tag.id)
+            db.session.add(s)
+            db.session.commit()
+    
+    def remove_tag(self, tag):
+        s = self.tags.query.filter_by(resource_id=self.id).first()
+        if s is not None:
+            db.session.delete(s)
+            db.session.commit()
+            
 
 class Star(db.Model):
     resource_id = db.Column(db.Integer,
@@ -622,6 +682,9 @@ class User(db.Model):
     #                 lazy='dynamic',
     #                 cascade='all')
     domains = db.relationship('Domain',
+                              back_populates='creator',
+                              cascade='all')
+    resource_tags = db.relationship('ResourceTag',
                               back_populates='creator',
                               cascade='all')
     # comments = db.relationship('Comment',
