@@ -3,6 +3,7 @@
     :author: Kleon
     :url: https://github.com/kleon1024
 """
+from datetime import datetime
 from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api
@@ -33,7 +34,7 @@ class ResourceStared(RestfulResource):
             order_by = Star.timestamp.asc()
         else:
             order_by = Star.timestamp.desc()
-        items = [merge(star.resource.s, star.s) for star in
+        items = [merge(star.resource.ss(current_user), star.s) for star in
                  current_user.stars.order_by(order_by).paginate(offset, limit).items]
         return response('OK', items=items)
 
@@ -246,6 +247,23 @@ class ResourceStar(RestfulResource):
         current_user.unstar(r)
         return response('OK', items=[r.s])
 
+
+class ResourceTags(RestfulResource):
+    @jwt_required
+    def get(self):
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 1))
+        order = request.args.get('order', Order.time_desc.value)
+        if order == Order.time_desc.value:
+            order_by = ResourceTag.timestamp.desc()
+        elif order == Order.time_asc.value:
+            order_by = ResourceTag.timestamp.asc()
+        else:
+            order_by = ResourceTag.timestamp.desc()
+        rs = [t.s for t in current_user.resource_tags.order_by(order_by).paginate(offset, limit).items]
+        return response('OK', items=rs)
+
+
 class ResourceTagItem(RestfulResource):
     @jwt_required
     def get(self):
@@ -284,27 +302,37 @@ class ResourceTagItem(RestfulResource):
 class ResourceStick(RestfulResource):
     @jwt_required
     def post(self):
+        data = request.get_json()
         resource = Resource.query.get_or_404(data['resource'])
-        tag = Tag.query.get_or_404(data['tag'])
+        tag = ResourceTag.query.get_or_404(data['tag'])
 
         assert tag.creator_id == current_user.id
         assert current_user.stars.filter_by(resource_id=resource.id).first() is not None
-
+        
+        tag.timestamp = datetime.utcnow()
         resource.add_tag(tag)
-        return response('OK', items=[resource.s])
+        rs = resource.ss(current_user)
+        star = resource.collectors.filter_by(user_id=current_user.id).first()
+        if star is not None:
+            rs = merge(rs, star.s)
+        return response('OK', items=[rs])
 
     @jwt_required
     def delete(self):
         resource = request.args.get('resource')
         tag = request.args.get('tag')
         resource = Resource.query.get_or_404(resource)
-        tag = Tag.query.get_or_404(tag)
+        tag = ResourceTag.query.get_or_404(tag)
 
         assert tag.creator_id == current_user.id
         assert current_user.stars.filter_by(resource_id=resource.id).first() is not None
 
         resource.remove_tag(tag)
-        return response('OK', items=[resource.s])
+        rs = resource.ss(current_user)
+        star = resource.collectors.filter_by(user_id=current_user.id).first()
+        if star is not None:
+            rs = merge(rs, star.s)
+        return response('OK', items=[rs])
 
 
 api.add_resource(ResourceInstance, '')
@@ -316,5 +344,6 @@ api.add_resource(ResourceStar, '/star')
 api.add_resource(ResourceStared, '/stared')
 api.add_resource(ResourceCreated, '/created')
 api.add_resource(ResourceCollections, '/collections')
+api.add_resource(ResourceTags, '/tags')
 api.add_resource(ResourceTagItem, '/tag')
 api.add_resource(ResourceStick, '/stick')

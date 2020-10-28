@@ -300,9 +300,18 @@ class Resource(db.Model):
         
         return d
 
+    def ss(self, current_user):
+        if self.deleted:
+            d = {'id': self.id, 'deleted': self.deleted}
+        else:
+            d = self.to_dict()
+            d['media_type'] = self.media_type.name
+            d['resource_type'] = self.resource_type.name
+            d['tags'] = [t.tag_id for t in self.tags]
+        return d
 
     def has_tag(self, tag):
-        return self.tags.query.filter_by(resource_id=self.id).first() is not None
+        return self.tags.filter_by(tag_id=tag.id).first() is not None
     
     def add_tag(self, tag):
         if not self.has_tag(tag):
@@ -311,7 +320,7 @@ class Resource(db.Model):
             db.session.commit()
     
     def remove_tag(self, tag):
-        s = self.tags.query.filter_by(resource_id=self.id).first()
+        s = self.tags.filter_by(tag_id=tag.id).first()
         if s is not None:
             db.session.delete(s)
             db.session.commit()
@@ -678,6 +687,7 @@ class User(db.Model):
                             cascade='all')
     roadmaps = db.relationship('Roadmap',
                                back_populates='creator',
+                               lazy='dynamic',
                                cascade='all')
     # emoji_replies = db.relationship('EmojiReply',
     #                 back_populates='user',
@@ -685,9 +695,11 @@ class User(db.Model):
     #                 cascade='all')
     domains = db.relationship('Domain',
                               back_populates='creator',
+                              lazy='dynamic',
                               cascade='all')
     resource_tags = db.relationship('ResourceTag',
                               back_populates='creator',
+                              lazy='dynamic',
                               cascade='all')
     # comments = db.relationship('Comment',
     #                            back_populates='author',
