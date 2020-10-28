@@ -123,16 +123,18 @@ class Classify(db.Model):
                                  foreign_keys=[classifier_id],
                                  back_populates='classifieds',
                                  lazy='joined')
-    name_zh_cn = db.Column(String)
-    name_en_us = db.Column(String)
+    name_zh_cn = db.Column(db.String)
+    name_en_us = db.Column(db.String)
 
     @property
     def s(self):
-        d = {}
+        d = self.to_dict()
         d['resource_id'] = self.classifier_id
         d['resource_name'] = self.classifier.name
+        d['resource'] = self.classifier.s
         d['media_id'] = self.classified_id
         d['media_name'] = self.classified.name
+        d['media'] = self.classified.s
         return d
 
 
