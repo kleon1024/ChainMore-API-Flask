@@ -88,7 +88,11 @@ class SignIn(Resource):
                             id=user.id,
                             username=username,
                             access_token=access_token,
-                            refresh_token=refresh_token)
+                            refresh_token=refresh_token,
+                            access_expires=str(access_token_expire_time),
+                            refresh_expires=str(refresh_token_expire_time),
+                            timestamp=str(datetime.datetime.utcnow())
+                            )
 
         return response("BAD_REQUEST")
 

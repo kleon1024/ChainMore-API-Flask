@@ -348,10 +348,10 @@ class DomainUserCollections(Resource):
         domain = Domain.query.get_or_404(domain)
 
         rs = [c.collected.s for c in Collect.query.join(
-                Collection, Collect.collected_id == Collection.id).filter(
-                    Collect.collector_id == current_user.id,
-                    Collection.domain_id == domain.id
-                ).all()]
+            Collection, Collect.collected_id == Collection.id).filter(
+            Collect.collector_id == current_user.id,
+            Collection.domain_id == domain.id
+        ).all()]
 
         return response('OK', items=rs)
 
@@ -418,6 +418,7 @@ class DomainUserCollections(Resource):
 #             for domain in domains
 #         ]
 #         return response("OK", items=domains)
+
 
 class DomainNotInAggregateds(Resource):
     @jwt_required
@@ -556,7 +557,8 @@ class DomainInstanceDependeds(Resource):
         distance = request.args.get('distance', 1)
         lower_distance = request.args.get('lower', 0)
         domain = Domain.query.get_or_404(id)
-        certified_domains = [c.certified_id for c in current_user.certifieds.all()]
+        certified_domains = [
+            c.certified_id for c in current_user.certifieds.all()]
         skipped_domains = set([dep.ancestor_id for dep in Depend.query.filter(
             Depend.descendant_id.in_(certified_domains)).all()])
         recommend_domains = set([dep.descendant_id for dep in Depend.query.filter(
@@ -565,8 +567,8 @@ class DomainInstanceDependeds(Resource):
         rs = [
             merge(dep.ancestor.s,
                   (dict(certified=dep.ancestor.is_certified(current_user),
-                  recommend=dep.ancestor_id in recommend_domains,
-                  skip=dep.ancestor_id in skipped_domains)))
+                        recommend=dep.ancestor_id in recommend_domains,
+                        skip=dep.ancestor_id in skipped_domains)))
             for dep in Depend.query.filter(Depend.descendant_id == domain.id,
                                            Depend.distance >= lower_distance,
                                            Depend.distance <= distance).
@@ -991,7 +993,7 @@ class DomainCertify(Resource):
 
         for group in domain.certification_groups:
             group.unfinish(current_user)
-        
+
         domain.uncertify(current_user)
         return response('OK', items=[domain.s])
 

@@ -13,6 +13,7 @@ from .extensions import db, whooshee
 import json
 
 DIGEST_LENGTH = 64
+COLOR_MAX = int('0xffffff', 16)
 
 def to_dict(self):
     return {
@@ -288,6 +289,10 @@ class Resource(db.Model):
                             back_populates='resource',
                             lazy='dynamic',
                             cascade='all')
+    tracks = db.relationship('Track',
+                             back_populates='resource',
+                             lazy='dynamic',
+                             cascade='all')
 
     @property
     def s(self):
@@ -297,7 +302,7 @@ class Resource(db.Model):
             d = self.to_dict()
             d['media_type'] = self.media_type.name
             d['resource_type'] = self.resource_type.name
-        
+
         return d
 
     def ss(self, current_user):
@@ -432,6 +437,11 @@ class Collection(db.Model):
 
     type_id = db.Column(db.Integer, db.ForeignKey('collection_type.id'))
     type = db.relationship('CollectionType', back_populates='collections')
+
+    tracks = db.relationship('Track',
+                             back_populates='collection',
+                             lazy='dynamic',
+                             cascade='all')
 
     def ref(self, resources):
         cur_res = Reference.query.filter_by(referencer_id=self.id).all()
@@ -756,6 +766,14 @@ class User(db.Model):
                                       back_populates='user',
                                       lazy='dynamic',
                                       cascade='all')
+
+    groups = db.relationship('GroupMember',
+                             back_populates='user',
+                             lazy='dynamic',
+                             cascade='all')
+
+    vip = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -1201,6 +1219,14 @@ class Domain(db.Model):
                                            lazy='dynamic',
                                            cascade='all')
 
+    tracks = db.relationship('Track',
+                             back_populates='domain',
+                             lazy='dynamic',
+                             cascade='all')
+
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'))
+    group = db.relationship('Group', back_populates='domain')
+
     def certify(self, user):
         if not self.is_certified(user):
             certify = Certify(certifier_id=user.id, certified_id=self.id)
@@ -1304,6 +1330,7 @@ class MultipleChoice(db.Model):
         )
         return d
 
+
 class MultipleChoiceProblemType(Enum):
     SINGLE_ANSWER = 'single_answer'
     MULTIPLE_ANSWER = 'multiple_answer'
@@ -1340,7 +1367,7 @@ class MultipleChoiceProblem(db.Model):
 
         assert set([a.id for a in checked_answers]) == set(
             [a.id for a in self.answers])
-    
+
     @property
     def s(self):
         d = self.to_dict()
@@ -1353,6 +1380,7 @@ class MultipleChoiceProblem(db.Model):
         d['choices'] = [c.s for c in self.choices]
         d['answers'] = [c.id for c in self.answers]
         return d
+
 
 class CertificationType(Enum):
     MCP = 'multiple_choice_problem'
@@ -1381,7 +1409,7 @@ class Certification(db.Model):
         assert self.type == answer['type']
         if self.type == CertificationType.MCP.value:
             self.mcp.check_answer(answer['answers'])
-    
+
     @property
     def s(self):
         d = self.to_dict()
@@ -1395,6 +1423,242 @@ class Certification(db.Model):
         if self.type == CertificationType.MCP.value:
             d['mcp'] = self.mcp.ss
         return d
+
+class GroupMember(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'))
+    user_only = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User', foreign_keys=[user_id], back_populates='groups', lazy='joined')
+    group = db.relationship('Group', foreign_keys=[group_id], back_populates='members', lazy='joined')
+
+class Group(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    private = db.Column(db.Boolean, default=False)
+
+    title = db.Column(db.String)
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted = db.Column(db.Boolean, default=False)
+    locked = db.Column(db.Boolean, default=False)
+
+    actions = db.relationship('Action',
+                              back_populates='group',
+                              lazy='dynamic',
+                              cascade='all')
+
+    tags = db.relationship("TagGroup",
+                           back_populates="action",
+                           lazy='dynamic',
+                           cascade='all')
+
+    members = db.relationship("GroupMember",
+                           back_populates="group",
+                           lazy='dynamic',
+                           cascade='all')
+
+    domain = db.relationship("Domain", back_populates="group", uselist=False)
+
+    def is_member(self, user):
+        if self.domain is not None:
+            return self.domain.is_certified(current_user)
+        return self.members.filter_by(user_id=user.id).first() is not None
+
+    def add_member(self, user, user_only=False):
+        if not self.is_member(user):
+            r = GroupMember(group_id=self.id, user_id=user.id, user_only=user_only)
+            db.session.add(r)
+            db.session.commit()
+
+    def remove_member(self, user):
+        r = self.members.filter_by(user_id=user.id).first()
+        if r is not None:
+            db.session.remove(r)
+            db.session.commit()
+
+    def add_tag(self, tag):
+        if not self.has_tag(tag):
+            r = TagGroup(tag_id=tag.id, group_id=self.id)
+            db.session.add(r)
+            db.session.commit()
+    
+    def has_tag(self, tag):
+        return self.tags.filter_by(tag_id=tag.id).first() is not None
+    
+    def remove_tag(self, tag):
+        r = self.tags.filter_by(tag_id=tag.id).first()
+        if r is not None:
+            db.session.remove(r)
+            db.session.commit()
+
+
+class TrackType(Enum):
+    DOMAIN = 'domain'
+    COLLECTION = 'collection'
+    RESOURCE = 'resource'
+
+
+class Track(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String, default=TrackType.DOMAIN.value)
+    action_id = db.Column(db.Integer, db.ForeignKey('action.id'))
+    action = db.relationship('Action', back_populates='track')
+
+    domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'))
+    domain = db.relationship('Domain', back_populates='tracks')
+
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'))
+    collection = db.relationship('Collection', back_populates='tracks')
+
+    resource_id = db.Column(db.Integer, db.ForeignKey('resource.id'))
+    resource = db.relationship('Resource', back_populates='tracks')
+
+
+class RemindCycleType(Enum):
+    DAY = 'day'
+    WEEK = 'week'
+    MONTH = 'month'
+    YEAR = 'year'
+
+class TagStick(db.Model):
+    action_id = db.Column(db.Integer, db.ForeignKey('action.id'))
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id'))
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    action = db.relationship('Action',
+                             foreign_keys=[action_id],
+                             back_populates='tags',
+                             lazy='joined')
+    tag = db.relationship('Tag',
+                          foreign_keys=[tag_id],
+                          back_populates='actions',
+                          lazy='joined')
+
+
+class Action(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String)
+
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)
+    modify_time = db.Column(db.DateTime, default=datetime.utcnow)
+    finish_time = db.Column(db.DateTime)
+
+    finished = db.Column(db.Boolean, default=False)
+
+    remind_time = db.Column(db.DateTime)
+    remind_cycle = db.Column(db.String, default=RemindCycleType.DAY.value)
+    remind_freq = db.Column(db.Integer, default=0)
+
+    track = db.relationship("Track", back_populates="action", uselist=False)
+
+    aggregators = db.relationship("AggAction",
+                                  back_populates="descendant",
+                                  lazy='dynamic',
+                                  cascade='all')
+
+    aggregateds = db.relationship("AggAction",
+                                  back_populates="ancestor",
+                                  lazy='dynamic',
+                                  cascade='all')
+
+    dependeds = db.relationship("DepAction",
+                                back_populates="descendant",
+                                lazy='dynamic',
+                                cascade='all')
+
+    dependants = db.relationship("DepAction",
+                                 back_populates="ancestor",
+                                 lazy='dynamic',
+                                 cascade='all')
+
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'))
+    group = db.relationship('Group', back_populates='actions')
+
+    tags = db.relationship("TagStick",
+                           back_populates="action",
+                           lazy='dynamic',
+                           cascade='all')
+
+    def has_tag(self, tag):
+        return self.tags.filter_by(tag_id=tag.id).first() is not None
+    
+    def add_tag(self, tag):
+        if not self.has_tag(tag):
+            r = TagStick(tag_id=tag.id, action_id=self.id)
+            db.session.add(r)
+            db.session.commit()
+    
+    def remove_tag(self, tag):
+        r = self.tags.filter_by(tag_id=tag.id).first()
+        if r is not None:
+            db.session.delete(r)
+            db.session.commit()
+
+
+class AggAction(db.Model):
+    ancestor_id = db.Column(db.Integer,
+                            db.ForeignKey('action.id'))
+    descendant_id = db.Column(db.Integer,
+                              db.ForeignKey('action.id'))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    descendant = db.relationship('Action',
+                                 foreign_keys=[descendant_id],
+                                 back_populates='aggregateds',
+                                 lazy='joined')
+    ancestor = db.relationship('Action',
+                               foreign_keys=[ancestor_id],
+                               back_populates='aggregators',
+                               lazy='joined')
+    distance = db.Column(db.Integer)
+
+
+class DepAction(db.Model):
+    ancestor_id = db.Column(db.Integer,
+                            db.ForeignKey('action.id'))
+    descendant_id = db.Column(db.Integer,
+                              db.ForeignKey('action.id'))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    descendant = db.relationship('Action',
+                                 foreign_keys=[descendant_id],
+                                 back_populates='aggregateds',
+                                 lazy='joined')
+    ancestor = db.relationship('Action',
+                               foreign_keys=[ancestor_id],
+                               back_populates='aggregators',
+                               lazy='joined')
+    distance = db.Column(db.Integer)
+
+
+class TagGroup(db.Model):
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'))
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id'))
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    group = db.relationship('Action',
+                            foreign_keys=[group_id],
+                            back_populates='tags',
+                            lazy='joined')
+    tag = db.relationship('Tag',
+                          foreign_keys=[tag_id],
+                          back_populates='groups',
+                          lazy='joined')
+
+
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String, nullable=False)
+    finished = db.Column(db.Boolean, default=False)
+    color = db.Column(db.Integer, nullable=False)
+    modifiable = db.Column(db.Boolean, default=True)
+
+    actions = db.relationship('TagStick',
+                              back_populates="tag",
+                              lazy='dynamic',
+                              cascade='all')
+
+    groups = db.relationship('TagGroup',
+                             back_populates="tag",
+                             lazy='dynamic',
+                             cascade='all')
+
 
 # @whooshee.register_model('body')
 # class Sparkle(db.Model):
