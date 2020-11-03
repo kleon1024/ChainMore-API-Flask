@@ -335,6 +335,7 @@ class DomainCollections(Resource):
         aggs = [agg.descendant_id for agg in domain.aggregateds]
 
         collections = Collection.query.filter(
+            Collection.deleted == False,
             Collection.domain_id.in_(aggs)).order_by(order_by).paginate(offset, limit).items
 
         rs = [collection.s for collection in collections]
@@ -932,8 +933,8 @@ class DomainMCPChoiceInstance(Resource):
 
 
 class DomainMCPAnwers(Resource):
-    @admin_required
     @jwt_required
+    @admin_required
     def get(self):
         id = request.args.get('id')
         mcp = MultipleChoiceProblem.query.get_or_404(id)

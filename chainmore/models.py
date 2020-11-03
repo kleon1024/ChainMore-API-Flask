@@ -462,8 +462,13 @@ class Collection(db.Model):
 
     @property
     def s(self):
-        d = self.to_dict()
-        d['domain_title'] = self.domain.title
+        if self.deleted:
+            d = {}
+            d['id'] = self.id
+            d['deleted'] = self.deleted
+        else:
+            d = self.to_dict()
+            d['domain_title'] = self.domain.title
         return d
 
 

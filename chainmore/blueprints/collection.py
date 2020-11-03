@@ -13,6 +13,8 @@ from ..utils import (response, merge)
 from ..models import (Collection, Domain, Collect, Order)
 from ..extensions import db
 
+from ..decorators import admin_required, permission_required
+
 collection_bp = Blueprint('collection', __name__)
 api = Api(collection_bp)
 
@@ -30,7 +32,7 @@ class CollectionCollected(Resource):
         else:
             order_by = Collect.timestamp.desc()
         items = [merge(collected.collected.s, collected.s) for collected in
-                 current_user.collecteds.order_by(order_by).paginate(offset, limit).items]
+                 current_user.collecteds.order_by(order_by).paginate(offset, limit).items if collected.collected.deleted == False]
         return response('OK', items=items)
 
 
@@ -132,11 +134,14 @@ class CollectionInstance(Resource):
         return response('OK', items=[r.s])
 
     @jwt_required
+    @admin_required
     def delete(self):
         id = request.args.get('id')
         r = Collection.query.get_or_404(id)
-        assert (r.author_id == current_user.id)
         r.deleted = True
+        r.referenceds.delete(synchronize_session=False)
+        r.collectors.delete(synchronize_session=False)
+        db.session.commit()
         return response('OK', items=[r.s])
 
 
