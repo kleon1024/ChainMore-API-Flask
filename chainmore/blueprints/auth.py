@@ -118,8 +118,8 @@ class ChangePassword(Resource):
     @jwt_required
     def put(self):
         data = request.get_json()
-        password = data["old_password"]
-        new_password = data["new_password"]
+        password = data["oldPassword"]
+        new_password = data["newPassword"]
 
         if not current_user.validate_password(password):
             return response("BAD_REQUEST")
