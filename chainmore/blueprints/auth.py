@@ -77,20 +77,22 @@ class SignIn(Resource):
             return response("BAD_REQUEST")
 
         user = User.query.filter_by(username=username.lower()).first()
-        if user is not None and user.validate_password(password):
-            username = user.username
-            access_token = create_access_token(
-                identity=username, expires_delta=access_token_expire_time)
-            refresh_token = create_refresh_token(
-                identity=username, expires_delta=refresh_token_expire_time)
-            return response("OK",
-                            msg="User Login As {}".format(username),
-                            id=user.id,
-                            username=username,
-                            access_token=access_token,
-                            refresh_token=refresh_token)
+        if user is None and not user.validate_password(password):
+            return response("BAD_REQUEST")
 
-        return response("BAD_REQUEST")
+        username = user.username
+        access_token = create_access_token(
+            identity=username, expires_delta=access_token_expire_time)
+        refresh_token = create_refresh_token(
+            identity=username, expires_delta=refresh_token_expire_time)
+        return response("OK",
+                        msg="User Login As {}".format(username),
+                        id=user.id,
+                        username=username,
+                        access_token=access_token,
+                        refresh_token=refresh_token)
+
+
 
 
 class SignOut(Resource):
@@ -112,8 +114,22 @@ class SigninRefresh(Resource):
                         access_token=access_token,
                         refresh_token=refresh_token)
 
+class ChangePassword(Resource):
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+        password = data["old_password"]
+        new_password = data["new_password"]
+
+        if not current_user.validate_password(password):
+            return response("BAD_REQUEST")
+        current_user.set_password(new_password)
+        db.session.commit()
+        return response("OK")
+
 
 api.add_resource(SignIn, '/signin')
 api.add_resource(SignUp, '/signup')
 api.add_resource(SignOut, '/signout')
 api.add_resource(SigninRefresh, '/refresh')
+api.add_resource(ChangePassword, '/password')
