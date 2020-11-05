@@ -1,4 +1,4 @@
-# Environment 
+# Environment
 gunicorn
 yapf
 flake8
@@ -7,6 +7,8 @@ psycopg2-binary
 # Testing
 faker
 watchdog
+pytest-parallel
+pytest-cov
 
 # Development
 flask-sqlalchemy

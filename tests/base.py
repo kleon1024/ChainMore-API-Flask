@@ -80,8 +80,16 @@ class BaseTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         if response.status_code != 200:
             print(response)
-        self.assertEqual(data["code"], 20000)
         return data
+
+    def ERR(self, response, code=None):
+        data = response.get_json()
+        if code is not None:
+            self.assertEqual(response.status_code, code)
+            if response.status_code != code:
+                print(response)
+        else:
+            self.assertNotEqual(response.status_code, 200)
 
     def format(self, d):
         data = json.dumps(d, indent=2)

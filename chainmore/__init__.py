@@ -19,6 +19,7 @@ from .blueprints.collection import collection_bp
 from .blueprints.user import user_bp
 from .blueprints.resource import resource_bp
 from .blueprints.main import main_bp
+from .blueprints.group import group_bp
 
 from .extensions import db, jwt, whooshee
 from .settings import config
@@ -60,6 +61,7 @@ def register_blueprints(app):
     app.register_blueprint(user_bp, url_prefix='/v1/user')
     app.register_blueprint(resource_bp, url_prefix='/v1/resource')
     app.register_blueprint(main_bp, url_prefix='/v1')
+    app.register_blueprint(group_bp, url_prefix='/v1/group')
 
 
 def register_errorhandlers(app):
