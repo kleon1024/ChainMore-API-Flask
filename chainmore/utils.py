@@ -50,60 +50,34 @@ def response(status="OK", **kwargs):
     response.status_code = status_code
     return response
 
-
 def exist_email(value):
-    if User.query.filter_by(email=value.lower()).first():
-        return True
-    else:
-        return False
-
+    return User.query.filter_by(email=value.lower()).first() is not None
 
 def exist_username(value):
-    if User.query.filter_by(username=value).first():
-        return True
-    else:
-        return False
-
+    return User.query.filter_by(username=value).first() is not None
 
 def exist_nickname(value):
-    if User.query.filter_by(nickname=value).first():
-        return True
-    else:
-        return False
-
+    return User.query.filter_by(nickname=value).first() is not None
 
 def exist_domain(value):
-    if Domain.query.filter_by(title=value).first():
-        return True
-    else:
-        return False
-
+    return Domain.query.filter_by(title=value).first() is not None
 
 def validate_email(email, length):
-    if len(email) > length:
-        return False
     pattern = r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)\
                 |(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]\
                 {1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
-
-    if not re.match(pattern, email):
-        return False
-    return True
-
+    return len(email) <= length or re.match(pattern, email)
 
 def validate_username(name, length):
-    if len(name) > length:
-        return False
-    return True
-
+    return len(name) <= length
 
 def validate_password(password, length):
-    if len(password) > length:
-        return False
     pattern = r'^(?=.*?[a-zA-Z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{6,}$'
-    if not re.match(pattern, password):
-        return False
-    return True
+    return len(password) <= length or re.match(pattern, password)
+
+def validate_number(number):
+    pattern = r'^[1-9][0-9\.]*$'
+    return re.match(pattern, number)
 
 def merge(*args):
     d = {}

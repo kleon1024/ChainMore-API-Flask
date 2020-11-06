@@ -234,10 +234,19 @@ class GroupTestCase(BaseTestCase):
         data = self.OK(
             self.post(
                 "/v1/group/attr",
-                json=dict(cluster=cluster_id, type="text", text="ATTR"),
+                json=dict(cluster=cluster_id, text="ATTR"),
             )
         )
         attr_id = data["items"][0]["id"]
+
+        # Add Attribute
+        data = self.OK(
+            self.post(
+                "/v1/group/attr",
+                json=dict(cluster=cluster_id, text="ATTR1"),
+            )
+        )
+        attr1_id = data["items"][0]["id"]
 
         # Get AttributeClusters
         data = self.OK(
@@ -259,7 +268,7 @@ class GroupTestCase(BaseTestCase):
         data = self.OK(
             self.put(
                 "/v1/group/attr",
-                json=dict(attr=attr_id, type="text", text="ATTR1"),
+                json=dict(attr=attr_id, text="MODIFY_ATTR"),
             )
         )
 
@@ -273,7 +282,14 @@ class GroupTestCase(BaseTestCase):
         self.assertEqual(len(data["items"]), 1)
         self.assertEqual(len(data["items"][0]["attrs"]), 1)
         self.assertEqual(data["items"][0]["attrs"][0]["id"], attr_id)
-        self.assertEqual(data["items"][0]["attrs"][0]["text"], 'ATTR1')
+        self.assertEqual(data["items"][0]["attrs"][0]["text"], 'MODIFY_ATTR')
+
+        # Put Attribute to Action
+        data = self.OK(
+            self.post(
+                "/v1/group/action/belong", json=dict(action=action_id, attr=attr_id)
+            )
+        )
 
         # Remove Attribute from Action
         data = self.OK(

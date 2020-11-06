@@ -11,7 +11,7 @@ from flask_jwt_extended import jwt_required, current_user
 from flask_restful import Api
 from flask_restful import Resource as RestfulResource
 
-from ..utils import response, merge
+from ..utils import response, merge, validate_number
 from ..models import (
     User,
     Domain,
@@ -113,7 +113,7 @@ class ActionItem(RestfulResource):
     def get(self):
         action = request.args.get("action")
         r = Action.query.get_or_404(action)
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
     @jwt_required
     def post(self):
@@ -192,7 +192,7 @@ class ActionItem(RestfulResource):
             db.session.add(a)
 
         db.session.commit()
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
     @jwt_required
     def put(self):
@@ -355,7 +355,7 @@ class ActionItem(RestfulResource):
 
         r.modify_time = datetime.utcnow()
         db.session.commit()
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
     @jwt_required
     @admin_required
@@ -364,7 +364,7 @@ class ActionItem(RestfulResource):
         r = Action.query.get_or_404(action)
         db.session.delete(r)
         db.session.commit()
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
 
 class ActionTrackerItem(RestfulResource):
@@ -436,7 +436,7 @@ class AttributeClusterItem(RestfulResource):
     def get(self):
         cluster = request.args.get("cluster")
         r = AttributeCluster.query.get_or_404(cluster)
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
     @jwt_required
     def post(self):
@@ -456,7 +456,7 @@ class AttributeClusterItem(RestfulResource):
         r = AttributeCluster(**kwargs)
         db.session.add(r)
         db.session.commit()
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
     @jwt_required
     def put(self):
@@ -471,16 +471,17 @@ class AttributeClusterItem(RestfulResource):
             r.type = data["type"]
         db.session.add(r)
         db.session.commit()
-        return response("OK", items=[r.s])
+        return response("OK", items=[r.ss])
 
     @jwt_required
     def delete(self):
-        cluster = AttributeCluster.get_or_404(request.args["cluster"])
+        cluster = AttributeCluster.query.get_or_404(request.args["cluster"])
         assert cluster.group.is_member(current_user)
-        cluster.atts.delete(synchronize_session=False)
-        cluster.deleted = 1
+        AttributeBelong.query.filter(AttributeBelong.attr_id.in_([a.id for a in cluster.attrs.all()])).delete(synchronize_session=False)
+        cluster.attrs.delete(synchronize_session=False)
+        db.session.delete(cluster)
         db.session.commit()
-        return response("OK", items=[cluster.s])
+        return response("OK", items=[cluster.ss])
 
 
 class ActionAttributeItem(RestfulResource):
@@ -496,13 +497,12 @@ class ActionAttributeItem(RestfulResource):
         assert cluster.group.is_member(current_user)
         kwargs = {}
         kwargs["cluster_id"] = cluster.id
-        assert data["type"] in [a.value for a in AttributeClusterType]
-        if data["type"] == AttributeClusterType.TEXT.value:
-            kwargs["text"] = data["text"]
-        if data["type"] == AttributeClusterType.NUMERIC.value:
-            kwargs["number"] = data["number"]
-        if data["type"] == AttributeClusterType.TIME.value:
-            kwargs["time"] = data["time"]
+        kwargs["type"] = cluster.type
+        assert data["text"] != ''
+        assert cluster.attrs.filter_by(text=data["text"]).first() is None
+        if cluster.type == AttributeClusterType.NUMERIC.value:
+            assert validate_number(data["text"])
+        kwargs["text"] = data["text"]
         if "color" in data:
             color = int(data["color"])
             assert color >= 0 and color <= COLOR_MAX
@@ -520,13 +520,12 @@ class ActionAttributeItem(RestfulResource):
         r = ActionAttribute.query.get_or_404(data["attr"])
         assert r.cluster.group.is_member(current_user)
 
-        assert data["type"] in [a.value for a in AttributeClusterType]
-        if data["type"] == AttributeClusterType.TEXT.value:
+        if "text" in data:
+            assert data["text"] != ''
+            assert cluster.attrs.filter_by(text=data["text"]).first() is None
+            if cluster.type == AttributeClusterType.NUMERIC.value:
+                assert validate_number(data["text"])
             r.text = data["text"]
-        if data["type"] == AttributeClusterType.NUMERIC.value:
-            r.number = data["number"]
-        if data["type"] == AttributeClusterType.TIME.value:
-            r.time = data["time"]
 
         if "color" in data:
             color = int(color)
@@ -553,10 +552,9 @@ class ActionBelongItem(RestfulResource):
         data = request.get_json()
         r = Action.query.get_or_404(data["action"])
         attr = ActionAttribute.query.get_or_404(data["attr"])
-
         assert r.group.is_member(current_user)
         r.add_attr(attr)
-        return response("OK", items=[r.s])
+        return response("OK", items=[attr.s])
 
     @jwt_required
     def delete(self):
@@ -566,7 +564,7 @@ class ActionBelongItem(RestfulResource):
 
         assert r.group.is_member(current_user)
         r.remove_attr(attr)
-        return response("OK", items=[r.s])
+        return response("OK", items=[attr.s])
 
 
 class UserGroup(RestfulResource):
@@ -714,6 +712,12 @@ class GroupMember(RestfulResource):
 
 # class GroupMembers(RestfulResource):
 
+class GroupClusterTypes(RestfulResource):
+    @jwt_required
+    def get(self):
+        rs = [a.value for a in AttributeClusterType]
+        return response("OK", items=rs)
+
 api.add_resource(GroupItem, "")
 api.add_resource(ActionItem, "/action")
 api.add_resource(Actions, "/actions")
@@ -727,3 +731,4 @@ api.add_resource(ActionDepend, "/action/depend")
 api.add_resource(AttributeClusters, "/clusters")
 api.add_resource(ActionAttributeItem, "/attr")
 api.add_resource(GroupMember, '/member')
+api.add_resource(GroupClusterTypes, '/cluster/types')

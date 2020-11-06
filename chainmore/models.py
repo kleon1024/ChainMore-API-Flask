@@ -1687,9 +1687,7 @@ class AttributeCluster(db.Model):
 
 class ActionAttribute(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.String)
-    number = db.Column(db.Integer, default=0)
-    order = db.Column(db.Integer, default=0)
+    text = db.Column(db.String, nullable=False)
     type = db.Column(db.String, default=AttributeClusterType.TEXT.value)
 
     color = db.Column(db.Integer, nullable=False)
