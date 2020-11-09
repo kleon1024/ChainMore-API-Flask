@@ -26,7 +26,7 @@ class Search(Resource):
         type = request.args.get('type', '')
         if type == 'user':
             users = User.query.whooshee_search(q).paginate(offset, limit).items
-            users = [user.s for user in users]
+            users = [user.short for user in users]
             return response("OK", items=users, type='user')
         if type == 'domain':
             domains = Domain.query.whooshee_search(q).paginate(offset,

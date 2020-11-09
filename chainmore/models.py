@@ -756,6 +756,12 @@ class User(db.Model):
         d["is_active"] = self.is_active
         return d
 
+    @property
+    def short(self):
+        d = {}
+        d["username"] = self.username
+        return d
+
     # def set_filtered_categories(self, categories):
     #     print(categories)
     #     for filter_category in self.filtered_categories:

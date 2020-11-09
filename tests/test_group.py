@@ -81,10 +81,10 @@ class GroupTestCase(BaseTestCase):
                 query_string=dict(group=group_id, offset=1, limit=10),
             )
         )
-        self.assertEqual(len(data["items"]), 2)
+        self.assertEqual(len(data["items"]), 5)
 
         for item in data["items"]:
-            self.assertEqual(item["descendant_id"], item["ancestor_id"] + 1)
+            self.assertTrue(item["descendant_id"] in [item["ancestor_id"], item["ancestor_id"] + 1])
 
         data = self.OK(
             self.put(
@@ -97,10 +97,10 @@ class GroupTestCase(BaseTestCase):
                 query_string=dict(group=group_id, offset=1, limit=10),
             )
         )
-        self.assertEqual(len(data["items"]), 2)
+        self.assertEqual(len(data["items"]), 5)
 
         for item in data["items"]:
-            self.assertEqual(item["ancestor_id"], action0_id)
+            self.assertTrue(item["ancestor_id"] in [action0_id, item["descendant_id"]])
 
     def test_depend_actions(self):
         """
@@ -253,7 +253,7 @@ class GroupTestCase(BaseTestCase):
             self.get("/v1/group/clusters", query_string=dict(group=group_id))
         )
         self.assertEqual(len(data["items"]), 1)
-        self.assertEqual(len(data["items"][0]["attrs"]), 1)
+        self.assertEqual(len(data["items"][0]["attrs"]), 2)
         self.assertEqual(data["items"][0]["attrs"][0]["type"], "text")
         self.assertEqual(data["items"][0]["attrs"][0]["text"], "ATTR")
 

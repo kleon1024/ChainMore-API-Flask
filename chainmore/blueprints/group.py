@@ -19,6 +19,7 @@ from ..models import (
     Resource,
     Action,
     ActionTracker,
+    TrackerType,
     ActionReminder,
     AttributeClusterType,
     Group,
@@ -69,7 +70,7 @@ class ActionAggregate(RestfulResource):
         items = [
             d.s
             for d in AggAction.query.join(Action, AggAction.ancestor_id == Action.id)
-            .filter(Action.group_id == group.id, AggAction.distance == 1)
+            .filter(Action.group_id == group.id, AggAction.distance <= 1)
             .paginate(offset, limit)
             .items
         ]
@@ -371,47 +372,47 @@ class ActionTrackerItem(RestfulResource):
     @jwt_required
     def get(self):
         track = request.args.get("track")
-        r = Track.query.get_or_404(track)
+        r = ActionTracker.query.get_or_404(track)
         return response("OK", items=[r.s])
 
     @jwt_required
     def post(self):
         data = request.get_json()
         track_type = data["type"]
-        assert track_type in [e.value for e in TrackType]
+        assert track_type in [e.value for e in TrackerType]
         action = Action.query.get_or_404(data["action"])
         kwargs = {}
         kwargs["type"] = track_type
         kwargs["action_id"] = action.id
-        if track_type == TrackType.DOMAIN.value:
+        if track_type == TrackerType.DOMAIN.value:
             d = Domain.query.get_or_404(data["domain"])
             kwargs["domain_id"] = d.id
-        if track_type == TrackType.COLLECTION.value:
+        if track_type == TrackerType.COLLECTION.value:
             c = Collection.query.get_or_404(data["collection"])
             kwargs["collection_id"] = c.id
-        if track_type == TrackType.RESOURCE.value:
+        if track_type == TrackerType.RESOURCE.value:
             r = Resource.query.get_or_404(data["resource"])
             kwargs["resource_id"] = r.id
-        r = Track(**kwargs)
+        r = ActionTracker(**kwargs)
         db.session.add(r)
         return response("OK", items=[r.s])
 
     @jwt_required
     def put(self):
         data = request.get_json()
-        r = Track.query.get_or_404(data["track"])
+        r = ActionTracker.query.get_or_404(data["track"])
 
         if "type" in data:
             track_type = data["type"]
-            assert track_type in [e.value for e in TrackType]
+            assert track_type in [e.value for e in TrackerType]
             if r.track_type != track_type:
-                if track_type == TrackType.DOMAIN.value:
+                if track_type == TrackerType.DOMAIN.value:
                     d = Domain.query.get_or_404(data["domain"])
                     r.domain_id = d.id
-                if track_type == TrackType.COLLECTION.value:
+                if track_type == TrackerType.COLLECTION.value:
                     c = Collection.query.get_or_404(data["collection"])
                     r.collection_id = c.id
-                if track_type == TrackType.RESOURCE.value:
+                if track_type == TrackerType.RESOURCE.value:
                     r = Resource.query.get_or_404(data["resource"])
                     r.resource_id = r.id
 
@@ -425,7 +426,7 @@ class ActionTrackerItem(RestfulResource):
     @jwt_required
     def delete(self):
         track = request.args.get("track")
-        r = Track.query.get_or_404(track)
+        r = ActionTracker.query.get_or_404(track)
         db.session.delete(r)
         db.session.commit()
         return response("OK", items=[r.s])
@@ -522,8 +523,8 @@ class ActionAttributeItem(RestfulResource):
 
         if "text" in data:
             assert data["text"] != ''
-            assert cluster.attrs.filter_by(text=data["text"]).first() is None
-            if cluster.type == AttributeClusterType.NUMERIC.value:
+            assert r.cluster.attrs.filter_by(text=data["text"]).first() is None
+            if r.cluster.type == AttributeClusterType.NUMERIC.value:
                 assert validate_number(data["text"])
             r.text = data["text"]
 
@@ -626,7 +627,7 @@ class DomainGroup(RestfulResource):
 
         kwargs = {}
         kwargs["title"] = current_user.username
-        kwargs["permission"] = DomainPermission.PUBLIC.value
+        kwargs["permission"] = GroupPermission.PUBLIC.value
         r = Group(**kwargs)
         db.session.add(r)
         db.session.commit()
@@ -691,8 +692,22 @@ class GroupItem(RestfulResource):
         r.remove_member(current_user)
         return response("OK", items=[r.s])
 
+class Groups(RestfulResource):
+    @jwt_required
+    def get(self):
+        groups = [group.group.s for group in current_user.groups.filter_by(user_only=0).all()]
+        return response("OK", items=groups)
 
 class GroupMember(RestfulResource):
+    @jwt_required
+    def get(self):
+        offset = int(request.args.get('offset', 1))
+        limit = int(request.args.get('limit', 10))
+        group = Group.query.get_or_404(request.args.get("group"))
+        assert group.is_member(current_user)
+        rs = [g.user.short for g in group.members.paginate(offset, limit).items]
+        return response("OK", items=rs)
+
     @jwt_required
     def post(self):
         data = request.get_json()
@@ -701,9 +716,7 @@ class GroupMember(RestfulResource):
         user = User.query.filter_by(username=data['username']).first()
         assert user is not None
         group.add_member(user)
-
-        return response("OK")
-
+        return response("OK", items=[user.short])
 
     @jwt_required
     def delete(self):
@@ -719,6 +732,7 @@ class GroupClusterTypes(RestfulResource):
         return response("OK", items=rs)
 
 api.add_resource(GroupItem, "")
+api.add_resource(Groups, "/all")
 api.add_resource(ActionItem, "/action")
 api.add_resource(Actions, "/actions")
 api.add_resource(ActionTrackerItem, "/action/tracker")
@@ -730,5 +744,5 @@ api.add_resource(ActionAggregate, "/action/aggregate")
 api.add_resource(ActionDepend, "/action/depend")
 api.add_resource(AttributeClusters, "/clusters")
 api.add_resource(ActionAttributeItem, "/attr")
-api.add_resource(GroupMember, '/member')
+api.add_resource(GroupMember, "/member")
 api.add_resource(GroupClusterTypes, '/cluster/types')
