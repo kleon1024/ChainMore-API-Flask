@@ -9,6 +9,7 @@ from enum import Enum
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from .extensions import db, whooshee
+from .common import merge
 
 import json
 
@@ -1540,6 +1541,7 @@ class AttributeBelong(db.Model):
     attr_id = db.Column(
         db.Integer, db.ForeignKey("action_attribute.id"), primary_key=True
     )
+    order = db.Column(db.Integer, default=0)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     action = db.relationship(
         "Action", foreign_keys=[action_id], back_populates="attrs", lazy="joined"
@@ -1641,11 +1643,38 @@ class Action(db.Model):
     def has_attr(self, attr):
         return self.attrs.filter_by(attr_id=attr.id).first() is not None
 
-    def add_attr(self, attr):
-        if not self.has_attr(attr):
-            r = AttributeBelong(attr_id=attr.id, action_id=self.id)
+    def add_attr(self, attr, after):
+        if after is not None:
+            belongs = AttributeBelong.query.filter(
+                AttributeBelong.attr_id == attr.id, AttributeBelong.order > after
+            ).all()
+            for b in belongs:
+                b.order += 1
+        else:
+            max_belong = (
+                AttributeBelong.query.filter(AttributeBelong.attr_id == attr.id)
+                .order_by(AttributeBelong.order.desc())
+                .first()
+            )
+
+            if max_belong is not None:
+                after = max_belong.order + 1
+            else:
+                after = 0
+
+        if after < 0:
+            after = 0
+
+        belong = self.attrs.filter_by(attr_id=attr.id).first()
+        if belong is None:
+            r = AttributeBelong(attr_id=attr.id, action_id=self.id, order=after)
             db.session.add(r)
-            db.session.commit()
+            belong = r
+        else:
+            belong.order = after
+
+        db.session.commit()
+        return belong
 
     def remove_attr(self, attr):
         r = self.attrs.filter_by(attr_id=attr.id).first()
@@ -1656,7 +1685,7 @@ class Action(db.Model):
     @property
     def ss(self):
         d = self.to_dict()
-        d['attrs'] = [a.attr.s for a in self.attrs.all()]
+        d["attrs"] = [merge(dict(order=a.order), a.attr.s) for a in self.attrs.all()]
         return d
 
 
@@ -1668,9 +1697,9 @@ class AttributeClusterType(Enum):
 
 class AttributeCluster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title =  db.Column(db.String, nullable=False)
+    title = db.Column(db.String, nullable=False)
 
-    deleted = db.Column(db.Integer, default=0) # Boolean
+    deleted = db.Column(db.Integer, default=0)  # Boolean
     group_id = db.Column(db.Integer, db.ForeignKey("group.id"))
     group = db.relationship("Group", back_populates="clusters")
 
@@ -1683,11 +1712,10 @@ class AttributeCluster(db.Model):
     type = db.Column(db.String, default=AttributeClusterType.TEXT.value)
     aggregate = db.Column(db.Integer, default=0)  # Boolean
 
-
     @property
     def ss(self):
         d = self.to_dict()
-        d['attrs'] = [attr.s for attr in self.attrs.all()]
+        d["attrs"] = [attr.s for attr in self.attrs.all()]
         return d
 
 
@@ -1695,6 +1723,7 @@ class ActionAttribute(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String, nullable=False)
     type = db.Column(db.String, default=AttributeClusterType.TEXT.value)
+    order = db.Column(db.Integer, default=0)
 
     color = db.Column(db.Integer, nullable=False)
 

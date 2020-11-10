@@ -8,7 +8,8 @@ from flask import Blueprint, request
 from flask_jwt_extended import (jwt_required, current_user)
 from flask_restful import Api, Resource
 
-from ..utils import (response, merge)
+from ..utils import (response)
+from ..common import merge
 from ..models import (
     Domain, Depend, Aggregate, Collection, Order, Mark,
     Collect,

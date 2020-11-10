@@ -78,9 +78,3 @@ def validate_password(password, length):
 def validate_number(number):
     pattern = r'^[1-9][0-9\.]*$'
     return re.match(pattern, number)
-
-def merge(*args):
-    d = {}
-    for arg in args:
-        d.update(arg)
-    return d

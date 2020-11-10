@@ -11,7 +11,8 @@ from flask_jwt_extended import jwt_required, current_user
 from flask_restful import Api
 from flask_restful import Resource as RestfulResource
 
-from ..utils import response, merge, validate_number
+from ..utils import response, validate_number
+from ..common import merge
 from ..models import (
     User,
     Domain,
@@ -554,8 +555,24 @@ class ActionBelongItem(RestfulResource):
         r = Action.query.get_or_404(data["action"])
         attr = ActionAttribute.query.get_or_404(data["attr"])
         assert r.group.is_member(current_user)
-        r.add_attr(attr)
-        return response("OK", items=[attr.s])
+        after = None
+        if "after" in data:
+            after = int(data["after"])
+        b = r.add_attr(attr, after)
+        return response("OK", items=[merge(dict(order=b.order), attr.s)])
+
+    @jwt_required
+    def put(self):
+        data = request.get_json()
+        r = Action.query.get_or_404(data["action"])
+        attr = ActionAttribute.query.get_or_404(data["attr"])
+        assert r.group.is_member(current_user)
+        if "after" in data:
+            after = int(data["after"])
+            b = r.add_attr(attr, after)
+        else:
+            b = r.attrs.filter_by(attr_id=attr.id).first()
+        return response("OK", items=[merge(dict(order=b.order), attr.s)])
 
     @jwt_required
     def delete(self):
